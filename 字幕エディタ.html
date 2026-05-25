@@ -2337,9 +2337,9 @@ function exportTitlesXML() {
   <library>
     <event name="字幕タイトル">
       <project name="${filename}_タイトル">
-        <sequence format="r1" duration="${t(totalDur)}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
+        <sequence format="r1" duration="${t(lastEnd)}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
           <spine>
-            <gap name="ギャップ" offset="0s" duration="${t(totalDur)}" start="0s">
+            <gap name="ギャップ" offset="0s" duration="${t(lastEnd)}" start="0s">
 ${titleClips}
             </gap>
           </spine>
