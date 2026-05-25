@@ -605,7 +605,6 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   <div class="sep-v"></div>
   <input type="file" id="srt-input" accept=".srt" style="display:none">
   <input type="file" id="video-input" accept="video/*" style="display:none">
-  <input type="file" id="fcpxml-remap-input" accept=".fcpxml,.xml" style="display:none" onchange="handleFCPXMLRemap(this)">
 
   <!-- 動画を開く -->
   <button class="btn btn-secondary" id="btn-load-video" onclick="document.getElementById('video-input').click()" style="font-size:14px;padding:9px 20px;">
@@ -933,8 +932,6 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
       <button class="btn btn-accent2 btn-sm" id="btn-export-fcpx" onclick="openFcpxModal()" disabled title="字幕キャプション（テロップ以外）">💬 キャプション</button>
       <button class="btn btn-accent2 btn-sm" id="btn-export-titles" onclick="exportTitlesXML()" disabled title="スタイル付きタイトルクリップ">🎨 タイトル</button>
       <button class="btn btn-ghost btn-sm" onclick="openTitleStyleModal()" title="タイトルスタイル設定（フォント・色・位置）" style="padding:7px 10px;">⚙ スタイル</button>
-      <div style="width:1px;height:20px;background:rgba(155,107,242,0.3);margin:0 2px;"></div>
-      <button class="btn btn-accent2 btn-sm" id="btn-fcp-remap" onclick="document.getElementById('fcpxml-remap-input').click()" disabled title="FCPのプロジェクトXMLを読み込んでSRTのタイムコードを自動調整">🔄 タイムライン合わせ</button>
     </div>
     <!-- Vrew -->
     <div style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:5px 8px 5px 5px;">
@@ -1058,24 +1055,12 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
     <!-- タブ: Whisperヒント -->
     <div id="dict-pane-hint" style="flex:1;overflow-y:auto;padding:16px;display:none;flex-direction:column;gap:10px;">
       <div style="font-size:12px;color:var(--text2);line-height:1.7;">人名・地名・専門用語を登録するとWhisperが正しく認識しやすくなります。カンマ区切りまたは自由文で入力してください。</div>
-
-      <!-- プリセット -->
-      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-        <span style="font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.04em;">プリセット</span>
-        <button class="btn btn-secondary btn-xs" onclick="applyVocabPreset('kansai')" title="関西弁・早口向けの認識ヒントを追加">🗣 関西弁</button>
-        <button class="btn btn-secondary btn-xs" onclick="applyVocabPreset('car')"    title="車・整備系の専門用語を追加">🚗 車・整備</button>
-        <button class="btn btn-secondary btn-xs" onclick="applyVocabPreset('youtube')" title="YouTube向け一般的な表現">📹 YouTube</button>
-      </div>
-
-      <textarea id="vocab-input" rows="6" placeholder="例: ジムニー, カモさん, めっちゃ, ほんま, あかん" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:13px;outline:none;resize:vertical;font-family:inherit;line-height:1.7;"></textarea>
+      <textarea id="vocab-input" rows="6" placeholder="例: ジムニー, FCPX, カモさん, Final Cut Pro, けいふぉんと" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:13px;outline:none;resize:vertical;font-family:inherit;line-height:1.7;"></textarea>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary btn-sm" style="flex:1" onclick="saveVocab()">保存</button>
         <button class="btn btn-danger btn-sm" onclick="clearVocab()">クリア</button>
       </div>
       <div id="vocab-status" style="font-size:12px;color:var(--text2);"></div>
-      <div style="font-size:11px;color:var(--text3);line-height:1.6;background:var(--bg);border-radius:8px;padding:10px 12px;border:1px solid var(--border);">
-        💡 <strong style="color:var(--text2);">効果的な使い方：</strong>よく間違えられる単語をそのまま入力。「ほんま」「めっちゃ」など方言も入れると認識率が上がります。
-      </div>
     </div>
 
     <!-- タブ: 自動学習 -->
@@ -2182,7 +2167,7 @@ function updateStats() {
     document.getElementById('footer-hint').textContent = '字幕ファイルを読み込んでください';
   }
   const disabled = n === 0;
-  ['btn-export-srt','btn-export-fcpx','btn-export-titles','btn-export-vrew','btn-fcp-remap','btn-split-all','btn-snap','btn-cut-snap','btn-merge-frags','btn-rm-hallu','btn-clear-speakers'].forEach(id => document.getElementById(id).disabled = disabled);
+  ['btn-export-srt','btn-export-fcpx','btn-export-titles','btn-export-vrew','btn-split-all','btn-snap','btn-cut-snap','btn-merge-frags','btn-rm-hallu','btn-clear-speakers'].forEach(id => document.getElementById(id).disabled = disabled);
 }
 
 // ════════════════════════════════════════════
@@ -2274,104 +2259,6 @@ function exportFCPXML() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n<fcpxml version="1.11">\n  <resources>\n    <format id="r1" frameDuration="${fps.fd}" name="${fps.name}" width="${width}" height="${height}"/>\n  </resources>\n  <library>\n    <event name="${eventName}">\n      <project name="${eventName}">\n        <sequence format="r1" duration="${fcpTime(lastEnd)}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">\n          <spine>\n${captions}\n          </spine>\n        </sequence>\n      </project>\n    </event>\n  </library>\n</fcpxml>`;
   download(xml, `${filename}_captions.fcpxml`, 'application/xml');
   toast('FCPXMLをエクスポートしました', 'ok');
-}
-
-// ════════════════════════════════════════════
-//  FCPXMLタイムライン再マッピング
-// ════════════════════════════════════════════
-function parseFCPXMLTime(s) {
-  if (!s || s === '0s') return 0;
-  s = s.replace(/s$/, '');
-  if (s.includes('/')) {
-    const [num, den] = s.split('/');
-    return parseFloat(num) / parseFloat(den);
-  }
-  return parseFloat(s) || 0;
-}
-
-function handleFCPXMLRemap(input) {
-  const file = input.files[0];
-  input.value = '';
-  if (!file) return;
-  if (!entries.length) { toast('先にSRTを読み込んでください', 'err'); return; }
-
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      remapEntriesWithFCPXML(ev.target.result);
-    } catch(e) {
-      console.error(e);
-      toast('FCPXMLの読み込みに失敗しました: ' + e.message, 'err');
-    }
-  };
-  reader.readAsText(file, 'UTF-8');
-}
-
-function remapEntriesWithFCPXML(xmlText) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xmlText, 'application/xml');
-  if (doc.querySelector('parsererror')) throw new Error('XMLの解析に失敗しました');
-
-  // タイムラインのtcStart（01:00:00:00 などのオフセット）
-  const sequence = doc.querySelector('sequence');
-  const tcStartRaw = sequence ? (sequence.getAttribute('tcStart') || '0s') : '0s';
-  const tcStart = parseFCPXMLTime(tcStartRaw); // 秒
-
-  // spineの直下にあるすべてのクリップ（gap以外）を収集
-  const spines = doc.querySelectorAll('sequence > spine, sequence > spine spine');
-  const clips = [];
-
-  spines.forEach(spine => {
-    // 直接の子要素のみ（asset-clip, clip, ref-clip, sync-clip）
-    Array.from(spine.children).forEach(el => {
-      const tag = el.tagName;
-      if (tag === 'gap') return; // gapはスキップ
-
-      const offsetRaw = el.getAttribute('offset');
-      const startRaw  = el.getAttribute('start');
-      const durRaw    = el.getAttribute('duration');
-      if (!offsetRaw || !durRaw) return;
-
-      const offset   = parseFCPXMLTime(offsetRaw); // タイムライン上の位置（秒）
-      const srcStart = parseFCPXMLTime(startRaw || '0s'); // 元動画内の開始位置（秒）
-      const duration = parseFCPXMLTime(durRaw);
-
-      if (duration > 0) {
-        clips.push({ srcStart, srcEnd: srcStart + duration, offset });
-      }
-    });
-  });
-
-  if (clips.length === 0) {
-    toast('クリップが見つかりませんでした。FCPのプロジェクトXMLか確認してください', 'err');
-    return;
-  }
-
-  // タイムライン上の表示開始位置（tcStartを引いて0ベースにする）
-  let remapped = 0, skipped = 0;
-  entries = entries.map(e => {
-    const startSec = timeToMs(e.start) / 1000;
-    const endSec   = timeToMs(e.end)   / 1000;
-    const dur      = endSec - startSec;
-
-    // この字幕の開始時刻が含まれるクリップを探す
-    const clip = clips.find(c => startSec >= c.srcStart - 0.001 && startSec < c.srcEnd + 0.001);
-    if (!clip) { skipped++; return e; }
-
-    const newStart = (clip.offset - tcStart) + (startSec - clip.srcStart);
-    const newEnd   = newStart + dur;
-
-    if (newStart < 0) { skipped++; return e; }
-    remapped++;
-    return { ...e, start: msToTime(Math.round(newStart * 1000)), end: msToTime(Math.round(newEnd * 1000)) };
-  });
-
-  renderList();
-  saveState();
-  const msg = skipped > 0
-    ? `${remapped}件を再マッピングしました（${skipped}件は対象クリップ外のためスキップ）`
-    : `✅ ${remapped}件のタイムコードをFCPタイムラインに合わせました`;
-  toast(msg, 'ok');
 }
 
 function exportTitlesXML() {
@@ -3069,51 +2956,6 @@ function _updateLearnedUI() {
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-const VOCAB_PRESETS = {
-  kansai: [
-    'これは関西弁の日本語です。',
-    'ほんま, ほんまに, めっちゃ, めちゃくちゃ, あかん, あきません,',
-    'やん, やんか, やんな, やで, やろ, やろな, やんねん,',
-    'ちゃう, ちゃうちゃう, ちゃうねん, そやな, せやな, せやで,',
-    'なんで, なんや, なんやね, なんやねん, どないや, どないすんねん,',
-    'おる, おった, おらへん, いてる, いてへん,',
-    'しゃあない, しゃーない, えらい（大変）, しんどい,',
-    'きつい, はよ, はよして, もうちょっと, ちょっと待って,',
-    'わかった, わかったわかった, ええで, ええよ, あーそうか,',
-    '〜はる（関西敬語）: したはる, してはる, しはる, やったはる, やってはる,',
-    'きはる, 来はる, いわはる, 言わはる, みはる, 見はる,',
-    'いきはる, 行きはる, たべはる, 食べはる, もってはる, 持ってはる,'
-  ].join('\n'),
-
-  car: [
-    'ジムニー, トイマンチーズ, 板金, フレーム修正, サスペンション,',
-    '溶接, 車検, ドライブシャフト, ミッション, エンジン,',
-    'オーバーホール, リフトアップ, バンパー, フェンダー,',
-    'ボディ, タイヤ, ホイール, ブレーキ, キャリパー,',
-    'アクスル, デフ, トランスファー, 4WD, 四駆,',
-    'ラダーフレーム, コイルスプリング, リーフスプリング,',
-    '錆び, 腐食, パテ, サフェーサー, 塗装, クリア塗装'
-  ].join('\n'),
-
-  youtube: [
-    'チャンネル登録, 高評価, コメント, 概要欄,',
-    'サムネイル, 切り抜き, コラボ, ライブ配信,',
-    'ショート動画, メンバーシップ, スーパーチャット,',
-    'よろしくお願いします, ありがとうございます, 見てください'
-  ].join('\n'),
-};
-
-function applyVocabPreset(key) {
-  const preset = VOCAB_PRESETS[key];
-  if (!preset) return;
-  const ta = document.getElementById('vocab-input');
-  const current = ta.value.trim();
-  // 既存テキストに追記（重複を避けるため先頭に挿入）
-  ta.value = current ? preset + '\n' + current : preset;
-  ta.focus();
-  toast('プリセットを追加しました。「保存」を押して確定してください', 'info');
 }
 
 function saveVocab() {
