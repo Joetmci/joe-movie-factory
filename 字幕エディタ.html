@@ -1206,22 +1206,6 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
 
 <div id="toast"></div>
 
-<!-- ワード分割モーダル -->
-<div class="modal-overlay" id="wordsplit-modal" onclick="if(event.target===this)closeWordSplit()">
-  <div class="modal" style="width:700px;max-width:95vw">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <h2 style="margin:0">✂ ワード分割</h2>
-      <button class="btn btn-ghost btn-sm" onclick="closeWordSplit()">✕</button>
-    </div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">単語の間をクリックして分割位置を選択してください</div>
-    <div id="wordsplit-chips" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;min-height:56px;"></div>
-    <div style="margin-top:14px;font-size:12px;color:var(--text2)" id="wordsplit-hint"></div>
-    <div class="actions" style="margin-top:16px">
-      <button class="btn btn-secondary btn-sm" onclick="closeWordSplit()">キャンセル</button>
-    </div>
-  </div>
-</div>
-
 <!-- 検索・一括置換モーダル -->
 <div class="modal-overlay" id="findreplace-modal">
   <div class="modal" style="width:460px">
@@ -1652,15 +1636,21 @@ function render() {
       <div title="音量: ${volPct}%" style="width:3px;height:100%;min-height:36px;background:var(--surface2);border-radius:2px;overflow:hidden;flex-shrink:0;">
         <div style="width:100%;height:${volPct}%;margin-top:${100-volPct}%;background:${volColor};border-radius:2px;transition:height 0.3s;"></div>
       </div>` : '';
+    const isActive = e.id === activeId;
+    const wordChipBar = isActive ? buildWordChipBar(e) : '';
     div.innerHTML = `
       <div class="entry-num"><span>${i+1}</span>${speakerBadgeHtml(e)}</div>
       ${volBar}
-      <input class="time-input" data-field="start" data-id="${e.id}" value="${e.start}" spellcheck="false">
-      <input class="time-input" data-field="end"   data-id="${e.id}" value="${e.end}"   spellcheck="false">
-      <textarea class="text-input" data-id="${e.id}" rows="2" spellcheck="false">${esc(e.text)}</textarea>
+      <div style="flex:1;display:flex;flex-direction:column;gap:0;min-width:0;">
+        <div style="display:flex;align-items:flex-start;gap:6px;">
+          <input class="time-input" data-field="start" data-id="${e.id}" value="${e.start}" spellcheck="false">
+          <input class="time-input" data-field="end"   data-id="${e.id}" value="${e.end}"   spellcheck="false">
+          <textarea class="text-input" data-id="${e.id}" rows="2" spellcheck="false" style="flex:1">${esc(e.text)}</textarea>
+        </div>
+        ${wordChipBar}
+      </div>
       <div style="display:flex;flex-direction:column;gap:2px;padding-top:1px;">
         <button class="btn btn-danger" title="削除" style="padding:5px 8px;font-size:14px;line-height:1;" onclick="deleteEntry(${e.id})">✕</button>
-        <button class="btn btn-ghost" title="ワード分割（ダブルクリックでも開けます）" style="padding:3px 6px;font-size:11px;line-height:1;opacity:0.6;" onclick="openWordSplit(${e.id})">✂</button>
       </div>`;
     frag.appendChild(div);
   }
