@@ -3972,6 +3972,7 @@ document.addEventListener('keydown', ev => {
   const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 
   if ((ev.metaKey || ev.ctrlKey) && ev.key === 's') { ev.preventDefault(); if (entries.length) exportSRT(); return; }
+  if ((ev.metaKey || ev.ctrlKey) && ev.key === 'h') { ev.preventDefault(); if (entries.length) openFindReplace(); return; }
 
   if (ev.key === ' ' && !inInput) { ev.preventDefault(); togglePlay(); return; }
 
