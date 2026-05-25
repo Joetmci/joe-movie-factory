@@ -3114,18 +3114,26 @@ function remapEntriesWithFCPXML(xmlText) {
 
   if (!clips.length) { showRemapResult(false, 'クリップが見つかりませんでした。FCPのプロジェクトXMLか確認してください'); return; }
 
+  // デバッグ: クリップ情報をコンソールに出力
+  console.log('[FCP Remap] クリップ数:', clips.length);
+  clips.slice(0, 5).forEach((c, i) => console.log(`  clip[${i}] offset=${c.offset.toFixed(3)}s srcStart=${c.srcStart.toFixed(3)}s srcEnd=${c.srcEnd.toFixed(3)}s`));
+  const firstSRT = timeToMs(entries[0].start) / 1000;
+  console.log('[FCP Remap] SRT先頭:', firstSRT.toFixed(3) + 's', '→', entries[0].start);
+
   let remapped = 0, skipped = 0;
   entries = entries.map(e => {
     const startSec = timeToMs(e.start) / 1000;
     const dur      = (timeToMs(e.end) - timeToMs(e.start)) / 1000;
     const clip = clips.find(c => startSec >= c.srcStart - 0.001 && startSec < c.srcEnd + 0.001);
     if (!clip) { skipped++; return e; }
-    // offset = FCP タイムライン上の位置、srcStart = 元動画内の開始位置
     const newStart = clip.offset + (startSec - clip.srcStart);
     if (newStart < 0) { skipped++; return e; }
     remapped++;
     return { ...e, start: msToTime(Math.round(newStart * 1000)), end: msToTime(Math.round((newStart + dur) * 1000)) };
   });
+
+  // デバッグ: 変換後の先頭エントリを確認
+  if (entries.length) console.log('[FCP Remap] 変換後1件目:', entries[0].start, entries[0].text?.slice(0,20));
 
   render();
   autosave();
