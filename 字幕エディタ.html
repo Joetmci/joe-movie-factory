@@ -4207,22 +4207,19 @@ function closeDictModal() {
 }
 
 // ── ワード分割（インラインVrew風） ───────────────────────────
-function buildWordChipBar(entry) {
+function buildWordChipBarInner(entry) {
   const words = _getWordsForEntry(entry);
-  if (words.length < 2) return '';
+  if (words.length < 2) return '<span style="font-size:11px;color:var(--text3)">分割できる単語が見つかりません</span>';
   const hasTimestamp = !!(entry._words && entry._words.length >= 2);
 
-  let html = `<div class="word-chip-bar">`;
+  let html = '';
   words.forEach((w, i) => {
-    // 単語チップ
     html += `<span class="wchip">${esc(w.word)}</span>`;
-    // 分割ボタン（最後の単語の後は不要）
     if (i < words.length - 1) {
       html += `<button class="wchip-split" onclick="doWordSplit(${entry.id},${i})" title="${esc(w.word)}と${esc(words[i+1].word)}の間で分割">✂</button>`;
     }
   });
-  html += `<span style="margin-left:auto;font-size:10px;color:var(--text3);opacity:0.6;white-space:nowrap">${hasTimestamp ? '🎯精確' : '〜推定'}</span>`;
-  html += `</div>`;
+  html += `<span style="margin-left:auto;font-size:10px;color:var(--text3);opacity:0.6;white-space:nowrap;padding-left:8px">${hasTimestamp ? '🎯精確' : '〜推定'}</span>`;
   return html;
 }
 
