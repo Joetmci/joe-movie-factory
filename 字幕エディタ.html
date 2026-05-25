@@ -3055,9 +3055,13 @@ function showRemapResult(ok, msg) {
 }
 
 function remapEntriesWithFCPXML(xmlText) {
+  // BOM除去・DOCTYPE宣言を無害化してからパース
+  xmlText = xmlText.replace(/^﻿/, '');
+  xmlText = xmlText.replace(/<!DOCTYPE[^>]*>/i, '');
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, 'application/xml');
-  if (doc.querySelector('parsererror')) throw new Error('XMLの解析に失敗しました');
+  const parseErr = doc.querySelector('parsererror');
+  if (parseErr) throw new Error('XML解析エラー: ' + (parseErr.textContent || '').slice(0, 120));
 
   // FCPXMLのoffsetはタイムライン先頭(0)からの相対値。tcStartは表示用なので計算に使わない
   const clips = [];
