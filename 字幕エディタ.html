@@ -380,8 +380,10 @@ header .spacer { flex: 1; }
 /* ── ワードチップバー（Vrew風インライン分割） ── */
 .word-chip-bar {
   display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
-  padding: 6px 4px 4px; margin-top: 4px;
+  padding: 6px 8px 6px 40px; /* 左は番号列分インデント */
   border-top: 1px solid rgba(255,159,10,0.15);
+  width: 100%; box-sizing: border-box;
+  grid-column: 1 / -1; /* gridの場合全幅 */
 }
 .wchip {
   padding: 3px 8px; background: var(--surface2); border: 1px solid var(--border);
