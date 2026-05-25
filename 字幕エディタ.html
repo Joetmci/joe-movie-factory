@@ -1058,12 +1058,24 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
     <!-- タブ: Whisperヒント -->
     <div id="dict-pane-hint" style="flex:1;overflow-y:auto;padding:16px;display:none;flex-direction:column;gap:10px;">
       <div style="font-size:12px;color:var(--text2);line-height:1.7;">人名・地名・専門用語を登録するとWhisperが正しく認識しやすくなります。カンマ区切りまたは自由文で入力してください。</div>
-      <textarea id="vocab-input" rows="6" placeholder="例: ジムニー, FCPX, カモさん, Final Cut Pro, けいふぉんと" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:13px;outline:none;resize:vertical;font-family:inherit;line-height:1.7;"></textarea>
+
+      <!-- プリセット -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        <span style="font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.04em;">プリセット</span>
+        <button class="btn btn-secondary btn-xs" onclick="applyVocabPreset('kansai')" title="関西弁・早口向けの認識ヒントを追加">🗣 関西弁</button>
+        <button class="btn btn-secondary btn-xs" onclick="applyVocabPreset('car')"    title="車・整備系の専門用語を追加">🚗 車・整備</button>
+        <button class="btn btn-secondary btn-xs" onclick="applyVocabPreset('youtube')" title="YouTube向け一般的な表現">📹 YouTube</button>
+      </div>
+
+      <textarea id="vocab-input" rows="6" placeholder="例: ジムニー, カモさん, めっちゃ, ほんま, あかん" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:13px;outline:none;resize:vertical;font-family:inherit;line-height:1.7;"></textarea>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary btn-sm" style="flex:1" onclick="saveVocab()">保存</button>
         <button class="btn btn-danger btn-sm" onclick="clearVocab()">クリア</button>
       </div>
       <div id="vocab-status" style="font-size:12px;color:var(--text2);"></div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.6;background:var(--bg);border-radius:8px;padding:10px 12px;border:1px solid var(--border);">
+        💡 <strong style="color:var(--text2);">効果的な使い方：</strong>よく間違えられる単語をそのまま入力。「ほんま」「めっちゃ」など方言も入れると認識率が上がります。
+      </div>
     </div>
 
     <!-- タブ: 自動学習 -->
