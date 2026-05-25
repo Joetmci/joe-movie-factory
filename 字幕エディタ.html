@@ -3409,7 +3409,7 @@ async function doTranscribe() {
 
     // ── フェーズ1: アップロード (0→30%) ───────────────
     setTranscribeStatus(`アップロード中… (${sizeMB} MB)`);
-    const srtText = await new Promise((resolve, reject) => {
+    const srtTextOrJson = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${HELPER_URL}/transcribe`);
       xhr.setRequestHeader('Content-Type', currentVideoFile.type || 'video/mp4');
