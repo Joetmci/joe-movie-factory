@@ -3454,8 +3454,23 @@ async function doTranscribe() {
     setTranscribeStatus('分割・スナップ処理中…');
     setTranscribeProgress(97);
 
+    // ── JSONレスポンス or プレーンSRT を判定 ──────────────────
+    let srtText = srtTextOrJson;
+    let _wordMap = {}; // entryIndex → words[]
+    try {
+      const parsed = JSON.parse(srtTextOrJson);
+      if (parsed.srt && parsed.segs) {
+        srtText = parsed.srt;
+        parsed.segs.forEach((seg, i) => { if (seg.words?.length) _wordMap[i] = seg.words; });
+      }
+    } catch(e) { /* plain SRT */ }
+
     // ── パイプライン適用 ──────────────────────────────
-    const raw = parseSRT(srtText).map(e => ({ ...e, text: applyLearnedCorrections(applyDict(e.text)) })); // 0. 辞書変換＋学習適用
+    const raw = parseSRT(srtText).map((e, i) => ({
+      ...e,
+      text: applyLearnedCorrections(applyDict(e.text)),
+      _words: _wordMap[i] || null
+    })); // 0. 辞書変換＋学習適用
     const fps = parseFloat(document.getElementById('fps-select').value) || 29.97;
     const fpsMap = { 29.97: 1001/30, 23.976: 1001/24, 59.94: 1001/60 };
     const frameDurMs = fpsMap[fps] ?? (1000 / fps);
