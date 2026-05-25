@@ -605,6 +605,7 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   <div class="sep-v"></div>
   <input type="file" id="srt-input" accept=".srt" style="display:none">
   <input type="file" id="video-input" accept="video/*" style="display:none">
+  <input type="file" id="fcpxml-remap-input" accept=".fcpxml,.xml" style="display:none" onchange="handleFCPXMLRemap(this)">
 
   <!-- 動画を開く -->
   <button class="btn btn-secondary" id="btn-load-video" onclick="document.getElementById('video-input').click()" style="font-size:14px;padding:9px 20px;">
