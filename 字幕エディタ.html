@@ -2969,6 +2969,115 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+const VOCAB_PRESETS = {
+  kansai: [
+    'これは関西弁の日本語です。',
+    'ほんま, ほんまに, めっちゃ, めちゃくちゃ, あかん, あきません,',
+    'やん, やんか, やんな, やで, やろ, やろな, やんねん,',
+    'ちゃう, ちゃうちゃう, ちゃうねん, そやな, せやな, せやで,',
+    'なんで, なんや, なんやね, なんやねん, どないや, どないすんねん,',
+    'おる, おった, おらへん, いてる, いてへん,',
+    'しゃあない, しゃーない, えらい, しんどい, きつい,',
+    'はよ, はよして, ええで, ええよ, わかった,',
+    'したはる, してはる, しはる, やったはる, やってはる,',
+    'きはる, 来はる, いわはる, みはる, いきはる, たべはる,'
+  ].join('\n'),
+  car: [
+    'ジムニー, トイマンチーズ, 板金, フレーム修正, サスペンション,',
+    '溶接, 車検, ドライブシャフト, ミッション, エンジン,',
+    'オーバーホール, リフトアップ, バンパー, フェンダー,',
+    'タイヤ, ホイール, ブレーキ, キャリパー,',
+    'アクスル, デフ, トランスファー, 4WD, 四駆,',
+    'ラダーフレーム, コイルスプリング, リーフスプリング,',
+    '錆び, 腐食, パテ, サフェーサー, 塗装, クリア塗装'
+  ].join('\n'),
+  youtube: [
+    'チャンネル登録, 高評価, コメント, 概要欄,',
+    'サムネイル, 切り抜き, コラボ, ライブ配信,',
+    'ショート動画, メンバーシップ,',
+    'よろしくお願いします, ありがとうございます'
+  ].join('\n'),
+};
+
+function applyVocabPreset(key) {
+  const preset = VOCAB_PRESETS[key];
+  if (!preset) return;
+  const ta = document.getElementById('vocab-input');
+  const current = ta.value.trim();
+  ta.value = current ? preset + '\n' + current : preset;
+  ta.focus();
+  toast('プリセットを追加しました。「保存」を押して確定してください', 'info');
+}
+
+// ════════════════════════════════════════════
+//  FCPXMLタイムライン再マッピング
+// ════════════════════════════════════════════
+function parseFCPXMLTime(s) {
+  if (!s || s === '0s') return 0;
+  s = s.replace(/s$/, '');
+  if (s.includes('/')) {
+    const [num, den] = s.split('/');
+    return parseFloat(num) / parseFloat(den);
+  }
+  return parseFloat(s) || 0;
+}
+
+function handleFCPXMLRemap(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (!entries.length) { toast('先にSRTを読み込んでください', 'err'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try { remapEntriesWithFCPXML(ev.target.result); }
+    catch(e) { console.error(e); toast('FCPXMLの読み込みに失敗しました: ' + e.message, 'err'); }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function remapEntriesWithFCPXML(xmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('XMLの解析に失敗しました');
+
+  const sequence = doc.querySelector('sequence');
+  const tcStart = parseFCPXMLTime((sequence && sequence.getAttribute('tcStart')) || '0s');
+
+  const clips = [];
+  doc.querySelectorAll('spine').forEach(spine => {
+    Array.from(spine.children).forEach(el => {
+      if (el.tagName === 'gap') return;
+      const offsetRaw = el.getAttribute('offset');
+      const durRaw    = el.getAttribute('duration');
+      if (!offsetRaw || !durRaw) return;
+      const offset   = parseFCPXMLTime(offsetRaw);
+      const srcStart = parseFCPXMLTime(el.getAttribute('start') || '0s');
+      const duration = parseFCPXMLTime(durRaw);
+      if (duration > 0) clips.push({ srcStart, srcEnd: srcStart + duration, offset });
+    });
+  });
+
+  if (!clips.length) { toast('クリップが見つかりませんでした', 'err'); return; }
+
+  let remapped = 0, skipped = 0;
+  entries = entries.map(e => {
+    const startSec = timeToMs(e.start) / 1000;
+    const dur      = (timeToMs(e.end) - timeToMs(e.start)) / 1000;
+    const clip = clips.find(c => startSec >= c.srcStart - 0.001 && startSec < c.srcEnd + 0.001);
+    if (!clip) { skipped++; return e; }
+    const newStart = (clip.offset - tcStart) + (startSec - clip.srcStart);
+    if (newStart < 0) { skipped++; return e; }
+    remapped++;
+    return { ...e, start: msToTime(Math.round(newStart * 1000)), end: msToTime(Math.round((newStart + dur) * 1000)) };
+  });
+
+  renderList();
+  saveState();
+  toast(skipped > 0
+    ? `${remapped}件を再マッピング（${skipped}件はスキップ）`
+    : `✅ ${remapped}件をFCPタイムラインに合わせました`, 'ok');
+}
+
 function saveVocab() {
   const v = document.getElementById('vocab-input').value.trim();
   if (v) {
