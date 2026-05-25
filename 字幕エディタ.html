@@ -1449,6 +1449,7 @@ function loadSpeakerPref() {
 
 function parseSRT(content) {
   const result = [];
+  content = content.replace(/^﻿/, ''); // UTF-8 BOM除去（Vrew対応）
   const blocks = content.replace(/\r\n/g, '\n').trim().split(/\n\n+/);
   for (const block of blocks) {
     const lines = block.trim().split('\n');
