@@ -3027,12 +3027,21 @@ function handleFCPXMLRemap(input) {
   input.value = '';
   if (!file) return;
   if (!entries.length) { toast('先にSRTを読み込んでください', 'err'); return; }
+  toast('📂 FCPXML読み込み中…', 'info');
   const reader = new FileReader();
   reader.onload = ev => {
     try { remapEntriesWithFCPXML(ev.target.result); }
-    catch(e) { console.error(e); toast('FCPXMLの読み込みに失敗しました: ' + e.message, 'err'); }
+    catch(e) { console.error(e); showRemapResult(false, e.message); }
   };
   reader.readAsText(file, 'UTF-8');
+}
+
+function showRemapResult(ok, msg) {
+  const el = document.getElementById('toast');
+  el.textContent = ok ? '✅ ' + msg : '❌ ' + msg;
+  el.className = `show ${ok ? 'ok' : 'err'}`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), ok ? 6000 : 8000);
 }
 
 function remapEntriesWithFCPXML(xmlText) {
