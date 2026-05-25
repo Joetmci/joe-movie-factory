@@ -2307,12 +2307,8 @@ function exportTitlesXML() {
   const volFontSize  = st.volFontSize  ?? 140;
   const volScaleY    = st.volScaleY    ?? 1.5;
 
-  // 先頭字幕の開始時刻（これを0に正規化して先頭ギャップをなくす）
-  const firstStart = timeToMs(entries[0].start) / 1000;
-  const totalDur   = lastEnd - firstStart;
-
   const titleClips = entries.map((e, i) => {
-    const s = timeToMs(e.start) / 1000 - firstStart; // 先頭を0に正規化
+    const s = timeToMs(e.start) / 1000;
     const d = Math.max(1/fps, (timeToMs(e.end) - timeToMs(e.start)) / 1000);
     const safe     = e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const safeName = e.text.replace(/[\r\n\t]/g,' ').replace(/\s+/g,' ').trim()
