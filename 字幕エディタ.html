@@ -3066,7 +3066,7 @@ function remapEntriesWithFCPXML(xmlText) {
     });
   });
 
-  if (!clips.length) { toast('クリップが見つかりませんでした', 'err'); return; }
+  if (!clips.length) { showRemapResult(false, 'クリップが見つかりませんでした。FCPのプロジェクトXMLか確認してください'); return; }
 
   let remapped = 0, skipped = 0;
   entries = entries.map(e => {
@@ -3082,9 +3082,11 @@ function remapEntriesWithFCPXML(xmlText) {
 
   render();
   autosave();
-  toast(skipped > 0
-    ? `${remapped}件を再マッピング（${skipped}件はスキップ）`
-    : `✅ ${remapped}件をFCPタイムラインに合わせました`, 'ok');
+  if (remapped === 0) {
+    showRemapResult(false, `変換できませんでした（全${skipped}件がクリップ範囲外）。元動画と同じFCPプロジェクトのXMLか確認してください`);
+  } else {
+    showRemapResult(true, `${remapped}件のタイムコードをFCPタイムラインに合わせました${skipped ? `（${skipped}件はクリップ範囲外のためスキップ）` : ''}`);
+  }
 }
 
 function saveVocab() {
