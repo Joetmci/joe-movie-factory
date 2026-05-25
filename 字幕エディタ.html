@@ -3114,16 +3114,14 @@ function remapEntriesWithFCPXML(xmlText) {
 
   if (!clips.length) { showRemapResult(false, 'クリップが見つかりませんでした。FCPのプロジェクトXMLか確認してください'); return; }
 
-  // タイムラインの先頭オフセット（最初のクリップのoffset）を引いて0ベースにする
-  const timelineBase = Math.min(...clips.map(c => c.offset));
-
   let remapped = 0, skipped = 0;
   entries = entries.map(e => {
     const startSec = timeToMs(e.start) / 1000;
     const dur      = (timeToMs(e.end) - timeToMs(e.start)) / 1000;
     const clip = clips.find(c => startSec >= c.srcStart - 0.001 && startSec < c.srcEnd + 0.001);
     if (!clip) { skipped++; return e; }
-    const newStart = (clip.offset - timelineBase) + (startSec - clip.srcStart);
+    // offset = FCP タイムライン上の位置、srcStart = 元動画内の開始位置
+    const newStart = clip.offset + (startSec - clip.srcStart);
     if (newStart < 0) { skipped++; return e; }
     remapped++;
     return { ...e, start: msToTime(Math.round(newStart * 1000)), end: msToTime(Math.round((newStart + dur) * 1000)) };
