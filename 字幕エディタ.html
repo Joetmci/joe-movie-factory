@@ -2337,6 +2337,16 @@ function exportTitlesXML() {
   const volFontSize  = st.volFontSize  ?? 140;
   const volScaleY    = st.volScaleY    ?? 1.5;
 
+  // 00:00:00に1フレームの透明タイトルを置く（コピペ時の開始位置アンカー）
+  const anchorDur = 1 / fps;
+  const anchorClip = `            <title ref="r2" lane="1" offset="0s" start="0s" duration="${t(anchorDur)}" name="⚓">
+              <text><text-style ref="ts_anchor"> </text-style></text>
+              <text-style-def id="ts_anchor">
+                <text-style alignment="center" fontColor="0 0 0 0" font="${st.font}" fontSize="${st.fontSize}" lineSpacing="${st.lineSpacing}" baseline="${st.baseline}" strokeColor="0 0 0 0" strokeWidth="0"/>
+              </text-style-def>
+              <adjust-transform position="0 ${st.posY}" scale="1 ${st.scaleY}"/>
+            </title>`;
+
   const titleClips = entries.map((e, i) => {
     const s = timeToMs(e.start) / 1000;
     const d = Math.max(1/fps, (timeToMs(e.end) - timeToMs(e.start)) / 1000);
