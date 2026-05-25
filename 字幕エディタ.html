@@ -644,8 +644,8 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
         <option value="medium">medium</option>
         <option value="large">large</option>
         <option value="large-v2">large-v2</option>
-        <option value="large-v3" selected>large-v3（高品質）</option>
-        <option value="large-v3-turbo">large-v3-turbo（速い＋高品質）</option>
+        <option value="large-v3">large-v3（最高品質・低速）</option>
+        <option value="large-v3-turbo" selected>large-v3-turbo（推奨：速い＋高品質）</option>
       </select>
 
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;white-space:nowrap;font-weight:500;" title="ピッチ解析で話者を自動検出します（男性/女性、または話者A/B）。処理時間が若干増えます">
@@ -654,7 +654,7 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
       </label>
 
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;white-space:nowrap;font-weight:500;" title="beam_size=10・best_of=5で精度を最大化します。処理時間が約2倍になります">
-        <input type="checkbox" id="chk-hq" checked style="accent-color:var(--accent);cursor:pointer;width:14px;height:14px;">
+        <input type="checkbox" id="chk-hq" style="accent-color:var(--accent);cursor:pointer;width:14px;height:14px;">
         🎯 高精度
       </label>
 
@@ -1204,6 +1204,29 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
 </div>
 
 <div id="toast"></div>
+
+<!-- 検索・一括置換モーダル -->
+<div class="modal-overlay" id="findreplace-modal">
+  <div class="modal" style="width:460px">
+    <h2>🔍 検索・一括置換</h2>
+    <div class="field">
+      <label>検索（誤変換）</label>
+      <input type="text" id="fr-find" placeholder="例: みちゅうらくん" style="width:100%" oninput="frPreview()" onkeydown="if(event.key==='Enter')document.getElementById('fr-replace').focus()">
+    </div>
+    <div class="field">
+      <label>置換後（正しい表記）</label>
+      <input type="text" id="fr-replace" placeholder="例: みじゅうらくん" style="width:100%" onkeydown="if(event.key==='Enter')frExecute()">
+    </div>
+    <div id="fr-preview" style="font-size:12px;color:var(--text2);min-height:20px;margin-bottom:4px;"></div>
+    <div class="actions">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);margin-right:auto;cursor:pointer">
+        <input type="checkbox" id="fr-adddict" style="accent-color:var(--accent)"> 辞書にも登録
+      </label>
+      <button class="btn btn-secondary btn-sm" onclick="closeFindReplace()">キャンセル</button>
+      <button class="btn btn-primary btn-sm" onclick="frExecute()">全て置換</button>
+    </div>
+  </div>
+</div>
 
 <!-- 前回作業の復元モーダル -->
 <div class="modal-overlay" id="restore-modal" style="display:none;">
