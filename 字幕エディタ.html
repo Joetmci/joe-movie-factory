@@ -745,6 +745,7 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   <!-- クリーンアップグループ -->
   <div class="toolbar-group">
     <span class="toolbar-group-label">🧹 クリーンアップ</span>
+    <button class="btn btn-secondary btn-xs" onclick="openFindReplace()" id="btn-findreplace" disabled title="誤変換を検索して一括置換（Cmd+H）">🔍 一括置換</button>
     <button class="btn btn-secondary btn-xs" onclick="removeHallucinationsAll()" id="btn-rm-hallu" disabled title="無音区間でWhisperが繰り返す幻覚テキストを除去">繰り返し除去</button>
     <button class="btn btn-secondary btn-xs" onclick="mergeFragmentsAll()" id="btn-merge-frags" disabled title="途中で切れたセグメントを自動結合">途切れ結合</button>
     <button class="btn btn-secondary btn-xs" onclick="clearAllSpeakers()" id="btn-clear-speakers" disabled title="全字幕から話者ラベルをまとめて削除">👤 話者クリア</button>
