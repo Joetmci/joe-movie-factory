@@ -2264,6 +2264,104 @@ function exportFCPXML() {
   toast('FCPXMLをエクスポートしました', 'ok');
 }
 
+// ════════════════════════════════════════════
+//  FCPXMLタイムライン再マッピング
+// ════════════════════════════════════════════
+function parseFCPXMLTime(s) {
+  if (!s || s === '0s') return 0;
+  s = s.replace(/s$/, '');
+  if (s.includes('/')) {
+    const [num, den] = s.split('/');
+    return parseFloat(num) / parseFloat(den);
+  }
+  return parseFloat(s) || 0;
+}
+
+function handleFCPXMLRemap(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (!entries.length) { toast('先にSRTを読み込んでください', 'err'); return; }
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      remapEntriesWithFCPXML(ev.target.result);
+    } catch(e) {
+      console.error(e);
+      toast('FCPXMLの読み込みに失敗しました: ' + e.message, 'err');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function remapEntriesWithFCPXML(xmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('XMLの解析に失敗しました');
+
+  // タイムラインのtcStart（01:00:00:00 などのオフセット）
+  const sequence = doc.querySelector('sequence');
+  const tcStartRaw = sequence ? (sequence.getAttribute('tcStart') || '0s') : '0s';
+  const tcStart = parseFCPXMLTime(tcStartRaw); // 秒
+
+  // spineの直下にあるすべてのクリップ（gap以外）を収集
+  const spines = doc.querySelectorAll('sequence > spine, sequence > spine spine');
+  const clips = [];
+
+  spines.forEach(spine => {
+    // 直接の子要素のみ（asset-clip, clip, ref-clip, sync-clip）
+    Array.from(spine.children).forEach(el => {
+      const tag = el.tagName;
+      if (tag === 'gap') return; // gapはスキップ
+
+      const offsetRaw = el.getAttribute('offset');
+      const startRaw  = el.getAttribute('start');
+      const durRaw    = el.getAttribute('duration');
+      if (!offsetRaw || !durRaw) return;
+
+      const offset   = parseFCPXMLTime(offsetRaw); // タイムライン上の位置（秒）
+      const srcStart = parseFCPXMLTime(startRaw || '0s'); // 元動画内の開始位置（秒）
+      const duration = parseFCPXMLTime(durRaw);
+
+      if (duration > 0) {
+        clips.push({ srcStart, srcEnd: srcStart + duration, offset });
+      }
+    });
+  });
+
+  if (clips.length === 0) {
+    toast('クリップが見つかりませんでした。FCPのプロジェクトXMLか確認してください', 'err');
+    return;
+  }
+
+  // タイムライン上の表示開始位置（tcStartを引いて0ベースにする）
+  let remapped = 0, skipped = 0;
+  entries = entries.map(e => {
+    const startSec = timeToMs(e.start) / 1000;
+    const endSec   = timeToMs(e.end)   / 1000;
+    const dur      = endSec - startSec;
+
+    // この字幕の開始時刻が含まれるクリップを探す
+    const clip = clips.find(c => startSec >= c.srcStart - 0.001 && startSec < c.srcEnd + 0.001);
+    if (!clip) { skipped++; return e; }
+
+    const newStart = (clip.offset - tcStart) + (startSec - clip.srcStart);
+    const newEnd   = newStart + dur;
+
+    if (newStart < 0) { skipped++; return e; }
+    remapped++;
+    return { ...e, start: msToTime(Math.round(newStart * 1000)), end: msToTime(Math.round(newEnd * 1000)) };
+  });
+
+  renderList();
+  saveState();
+  const msg = skipped > 0
+    ? `${remapped}件を再マッピングしました（${skipped}件は対象クリップ外のためスキップ）`
+    : `✅ ${remapped}件のタイムコードをFCPタイムラインに合わせました`;
+  toast(msg, 'ok');
+}
+
 function exportTitlesXML() {
   if (!entries.length) { toast('字幕がありません', 'err'); return; }
 
