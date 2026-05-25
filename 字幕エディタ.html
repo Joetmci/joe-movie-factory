@@ -1206,6 +1206,22 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
 
 <div id="toast"></div>
 
+<!-- ワード分割モーダル -->
+<div class="modal-overlay" id="wordsplit-modal" onclick="if(event.target===this)closeWordSplit()">
+  <div class="modal" style="width:700px;max-width:95vw">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h2 style="margin:0">✂ ワード分割</h2>
+      <button class="btn btn-ghost btn-sm" onclick="closeWordSplit()">✕</button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">単語の間をクリックして分割位置を選択してください</div>
+    <div id="wordsplit-chips" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;min-height:56px;"></div>
+    <div style="margin-top:14px;font-size:12px;color:var(--text2)" id="wordsplit-hint"></div>
+    <div class="actions" style="margin-top:16px">
+      <button class="btn btn-secondary btn-sm" onclick="closeWordSplit()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- 検索・一括置換モーダル -->
 <div class="modal-overlay" id="findreplace-modal">
   <div class="modal" style="width:460px">
