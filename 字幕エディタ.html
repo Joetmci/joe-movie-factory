@@ -1655,21 +1655,21 @@ function render() {
         <div style="width:100%;height:${volPct}%;margin-top:${100-volPct}%;background:${volColor};border-radius:2px;transition:height 0.3s;"></div>
       </div>` : '';
     const isActive = e.id === activeId;
-    const wordChipBar = isActive ? buildWordChipBar(e) : '';
     div.innerHTML = `
       <div class="entry-num"><span>${i+1}</span>${speakerBadgeHtml(e)}</div>
       ${volBar}
-      <div style="flex:1;display:flex;flex-direction:column;gap:0;min-width:0;">
-        <div style="display:flex;align-items:flex-start;gap:6px;">
-          <input class="time-input" data-field="start" data-id="${e.id}" value="${e.start}" spellcheck="false">
-          <input class="time-input" data-field="end"   data-id="${e.id}" value="${e.end}"   spellcheck="false">
-          <textarea class="text-input" data-id="${e.id}" rows="2" spellcheck="false" style="flex:1">${esc(e.text)}</textarea>
-        </div>
-        ${wordChipBar}
-      </div>
+      <input class="time-input" data-field="start" data-id="${e.id}" value="${e.start}" spellcheck="false">
+      <input class="time-input" data-field="end"   data-id="${e.id}" value="${e.end}"   spellcheck="false">
+      <textarea class="text-input" data-id="${e.id}" rows="2" spellcheck="false">${esc(e.text)}</textarea>
       <div style="display:flex;flex-direction:column;gap:2px;padding-top:1px;">
         <button class="btn btn-danger" title="削除" style="padding:5px 8px;font-size:14px;line-height:1;" onclick="deleteEntry(${e.id})">✕</button>
       </div>`;
+    if (isActive) {
+      const chipBar = document.createElement('div');
+      chipBar.className = 'word-chip-bar';
+      chipBar.innerHTML = buildWordChipBarInner(e);
+      div.appendChild(chipBar);
+    }
     frag.appendChild(div);
   }
 
