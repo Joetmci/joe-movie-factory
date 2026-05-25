@@ -2307,6 +2307,16 @@ function exportTitlesXML() {
   const volFontSize  = st.volFontSize  ?? 140;
   const volScaleY    = st.volScaleY    ?? 1.5;
 
+  // 先頭ギャップを埋める空白タイトル（00:00:00:00 に配置して選択・コピペの基点にする）
+  const firstStart = timeToMs(entries[0].start) / 1000;
+  const blankTitle = firstStart > 0 ? `            <title ref="r2" lane="1" offset="0s" start="0s" duration="${t(firstStart)}" name="▷ 開始">
+              <text><text-style ref="ts_blank"> </text-style></text>
+              <text-style-def id="ts_blank">
+                <text-style alignment="center" fontColor="0 0 0 0" font="${st.font}" fontSize="${st.fontSize}" lineSpacing="${st.lineSpacing}" baseline="${st.baseline}" strokeColor="0 0 0 0" strokeWidth="0"/>
+              </text-style-def>
+              <adjust-transform position="0 ${st.posY}" scale="1 ${st.scaleY}"/>
+            </title>` : '';
+
   const titleClips = entries.map((e, i) => {
     const s = timeToMs(e.start) / 1000;
     const d = Math.max(1/fps, (timeToMs(e.end) - timeToMs(e.start)) / 1000);
