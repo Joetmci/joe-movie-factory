@@ -2307,13 +2307,16 @@ function exportTitlesXML() {
   const volFontSize  = st.volFontSize  ?? 140;
   const volScaleY    = st.volScaleY    ?? 1.5;
 
+  // 先頭字幕の開始時刻（これを0に正規化して先頭ギャップをなくす）
+  const firstStart = timeToMs(entries[0].start) / 1000;
+  const totalDur   = lastEnd - firstStart;
+
   const titleClips = entries.map((e, i) => {
-    const s = timeToMs(e.start) / 1000;
+    const s = timeToMs(e.start) / 1000 - firstStart; // 先頭を0に正規化
     const d = Math.max(1/fps, (timeToMs(e.end) - timeToMs(e.start)) / 1000);
     const safe     = e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const safeName = e.text.replace(/[\r\n\t]/g,' ').replace(/\s+/g,' ').trim()
                            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    // 音量連動：wvPeaksがあり・連動ONで・しきい値超えなら大サイズ
     const isLoud = volEnable && wvPeaks && (e._volume || 0) >= volThreshold;
     const fontSize = isLoud ? volFontSize : st.fontSize;
     const scaleY   = isLoud ? volScaleY   : st.scaleY;
@@ -2338,9 +2341,9 @@ function exportTitlesXML() {
   <library>
     <event name="字幕タイトル">
       <project name="${filename}_タイトル">
-        <sequence format="r1" duration="${t(lastEnd)}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
+        <sequence format="r1" duration="${t(totalDur)}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
           <spine>
-            <gap name="ギャップ" offset="0s" duration="${t(lastEnd)}" start="0s">
+            <gap name="ギャップ" offset="0s" duration="${t(totalDur)}" start="0s">
 ${titleClips}
             </gap>
           </spine>
