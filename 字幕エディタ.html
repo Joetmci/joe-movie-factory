@@ -3072,7 +3072,7 @@ function remapEntriesWithFCPXML(xmlText) {
   });
 
   render();
-  saveState();
+  autosave();
   toast(skipped > 0
     ? `${remapped}件を再マッピング（${skipped}件はスキップ）`
     : `✅ ${remapped}件をFCPタイムラインに合わせました`, 'ok');
