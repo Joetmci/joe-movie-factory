@@ -1556,6 +1556,16 @@ function initListDelegation() {
     onRowClick({ target: ev.target, currentTarget: row, shiftKey: ev.shiftKey, metaKey: ev.metaKey });
   });
 
+  // dblclick: テキストエリアのダブルクリックでワード分割を開く
+  la.addEventListener('dblclick', ev => {
+    const ta = ev.target.closest('textarea.entry-text');
+    if (!ta) return;
+    const row = ta.closest('.entry');
+    if (!row) return;
+    const id = parseInt(row.dataset.id);
+    openWordSplit(id);
+  });
+
   // change: タイムコード確定
   la.addEventListener('change', ev => {
     if (ev.target.matches('.time-input')) onTimeChange(ev);
