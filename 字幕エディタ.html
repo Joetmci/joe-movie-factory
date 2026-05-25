@@ -4155,6 +4155,53 @@ function closeDictModal() {
   document.getElementById('dict-modal').classList.remove('open');
 }
 
+// ── 検索・一括置換 ────────────────────────────────────────────
+function openFindReplace(prefill) {
+  const modal = document.getElementById('findreplace-modal');
+  modal.classList.add('open');
+  const findEl = document.getElementById('fr-find');
+  if (prefill) findEl.value = prefill;
+  findEl.focus();
+  findEl.select();
+  frPreview();
+}
+function closeFindReplace() {
+  document.getElementById('findreplace-modal').classList.remove('open');
+}
+function frPreview() {
+  const find = document.getElementById('fr-find').value.trim();
+  const el = document.getElementById('fr-preview');
+  if (!find) { el.textContent = ''; return; }
+  const count = entries.filter(e => e.text.includes(find)).length;
+  el.textContent = count > 0 ? `${count}件の字幕に「${find}」が見つかりました` : '一致する字幕が見つかりません';
+  el.style.color = count > 0 ? 'var(--success)' : 'var(--text3)';
+}
+function frExecute() {
+  const find    = document.getElementById('fr-find').value;
+  const replace = document.getElementById('fr-replace').value;
+  const addDict = document.getElementById('fr-adddict').checked;
+  if (!find) { toast('検索文字列を入力してください', 'err'); return; }
+  let count = 0;
+  entries = entries.map(e => {
+    if (!e.text.includes(find)) return e;
+    count++;
+    return { ...e, text: e.text.split(find).join(replace) };
+  });
+  if (count === 0) { toast('一致する字幕が見つかりませんでした', 'err'); return; }
+  if (addDict && find && replace !== find) {
+    const dict = _getDict();
+    if (!dict.some(d => d.from === find)) {
+      dict.push({ from: find, to: replace });
+      localStorage.setItem('jmf_dict', JSON.stringify(dict));
+      updateDictBadge();
+    }
+  }
+  render();
+  autosave();
+  closeFindReplace();
+  toast(`✅ ${count}件を「${replace}」に置換しました${addDict ? '（辞書にも登録）' : ''}`, 'ok');
+}
+
 function renderDictList() {
   const rules = _getDict();
   const list = document.getElementById('dict-list');
