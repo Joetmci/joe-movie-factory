@@ -2209,12 +2209,42 @@ document.body.addEventListener('dragleave', ev => { if (!ev.relatedTarget) docum
 document.body.addEventListener('drop', ev => {
   ev.preventDefault();
   document.getElementById('dropzone').classList.remove('active');
+  const items = [...(ev.dataTransfer.items || [])];
   const files = [...ev.dataTransfer.files];
+
+  // .fcpxmld パッケージ（ディレクトリ）を処理
+  for (const item of items) {
+    if (item.kind !== 'file') continue;
+    const entry = item.webkitGetAsEntry && item.webkitGetAsEntry();
+    if (entry && entry.isDirectory && entry.name.toLowerCase().endsWith('.fcpxmld')) {
+      toast('📂 FCPXMLパッケージを読み込み中…', 'info');
+      entry.getFile('Info.fcpxml', {}, fileEntry => {
+        fileEntry.file(f => {
+          const reader = new FileReader();
+          reader.onload = e2 => {
+            try { remapEntriesWithFCPXML(e2.target.result); }
+            catch(err) { showRemapResult(false, err.message); }
+          };
+          reader.readAsText(f, 'UTF-8');
+        });
+      }, () => showRemapResult(false, '.fcpxmld の中に Info.fcpxml が見つかりませんでした'));
+      return;
+    }
+  }
+
+  // 通常ファイル
   for (const f of files) {
     if (f.name.toLowerCase().endsWith('.srt')) loadSRT(f);
-    else if (f.type.startsWith('video/')) {
-      loadVideo(f);
+    else if (f.name.toLowerCase().endsWith('.fcpxml') || f.name.toLowerCase().endsWith('.xml')) {
+      toast('📂 FCPXML読み込み中…', 'info');
+      const reader = new FileReader();
+      reader.onload = e2 => {
+        try { remapEntriesWithFCPXML(e2.target.result); }
+        catch(err) { showRemapResult(false, err.message); }
+      };
+      reader.readAsText(f, 'UTF-8');
     }
+    else if (f.type.startsWith('video/')) loadVideo(f);
   }
 });
 
