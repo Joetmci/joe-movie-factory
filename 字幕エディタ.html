@@ -4188,8 +4188,25 @@ function closeDictModal() {
   document.getElementById('dict-modal').classList.remove('open');
 }
 
-// ── ワード分割 ────────────────────────────────────────────────
-let _wordSplitEntryId = null;
+// ── ワード分割（インラインVrew風） ───────────────────────────
+function buildWordChipBar(entry) {
+  const words = _getWordsForEntry(entry);
+  if (words.length < 2) return '';
+  const hasTimestamp = !!(entry._words && entry._words.length >= 2);
+
+  let html = `<div class="word-chip-bar">`;
+  words.forEach((w, i) => {
+    // 単語チップ
+    html += `<span class="wchip">${esc(w.word)}</span>`;
+    // 分割ボタン（最後の単語の後は不要）
+    if (i < words.length - 1) {
+      html += `<button class="wchip-split" onclick="doWordSplit(${entry.id},${i})" title="${esc(w.word)}と${esc(words[i+1].word)}の間で分割">✂</button>`;
+    }
+  });
+  html += `<span style="margin-left:auto;font-size:10px;color:var(--text3);opacity:0.6;white-space:nowrap">${hasTimestamp ? '🎯精確' : '〜推定'}</span>`;
+  html += `</div>`;
+  return html;
+}
 
 function openWordSplit(entryId) {
   const entry = entries.find(e => e.id === entryId);
