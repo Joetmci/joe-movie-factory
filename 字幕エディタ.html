@@ -1558,7 +1558,7 @@ function initListDelegation() {
 
   // dblclick: テキストエリアのダブルクリックでワード分割を開く
   la.addEventListener('dblclick', ev => {
-    const ta = ev.target.closest('textarea.entry-text');
+    const ta = ev.target.closest('textarea.text-input');
     if (!ta) return;
     const row = ta.closest('.entry');
     if (!row) return;
@@ -1660,6 +1660,7 @@ function render() {
       <textarea class="text-input" data-id="${e.id}" rows="2" spellcheck="false">${esc(e.text)}</textarea>
       <div style="display:flex;flex-direction:column;gap:2px;padding-top:1px;">
         <button class="btn btn-danger" title="削除" style="padding:5px 8px;font-size:14px;line-height:1;" onclick="deleteEntry(${e.id})">✕</button>
+        <button class="btn btn-ghost" title="ワード分割（ダブルクリックでも開けます）" style="padding:3px 6px;font-size:11px;line-height:1;opacity:0.6;" onclick="openWordSplit(${e.id})">✂</button>
       </div>`;
     frag.appendChild(div);
   }
@@ -4292,7 +4293,6 @@ function doWordSplit(entryId, words, splitAfterIdx) {
                      _words: entry._words ? entry._words.slice(splitAfterIdx + 1) : null };
 
   entries.splice(idx, 1, newLeft, newRight);
-  renumber();
   render();
   autosave();
   closeWordSplit();
