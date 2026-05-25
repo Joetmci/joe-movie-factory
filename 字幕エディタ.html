@@ -3071,7 +3071,7 @@ function remapEntriesWithFCPXML(xmlText) {
     return { ...e, start: msToTime(Math.round(newStart * 1000)), end: msToTime(Math.round((newStart + dur) * 1000)) };
   });
 
-  renderList();
+  render();
   saveState();
   toast(skipped > 0
     ? `${remapped}件を再マッピング（${skipped}件はスキップ）`
