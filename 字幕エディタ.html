@@ -4055,12 +4055,38 @@ function download(content, name, type) {
 // ════════════════════════════════════════════
 let mcCutFcpxmlText = null, mcCutFcpxmlBase = '';
 let mcCutJsonData = null;
+let mcCutSource = 'builtin';
 
-function openMcCutModal()  { document.getElementById('mc-cut-modal').classList.add('open'); }
+function openMcCutModal()  {
+  document.getElementById('mc-cut-modal').classList.add('open');
+  updateMcCutBuiltinStatus();
+}
 function closeMcCutModal() { document.getElementById('mc-cut-modal').classList.remove('open'); }
 
+function switchMcCutSource(v) {
+  mcCutSource = v;
+  document.getElementById('mc-cut-builtin-box').style.display  = v === 'builtin'  ? '' : 'none';
+  document.getElementById('mc-cut-external-box').style.display = v === 'external' ? '' : 'none';
+  updateMcCutRunState();
+}
+
+function updateMcCutBuiltinStatus() {
+  const el = document.getElementById('mc-cut-builtin-status');
+  if (!wvAudioBuffer) {
+    el.textContent = '動画が未選択です（🎥 動画を選択 → 🔍 無音を検出）';
+  } else if (!speechRegions.length) {
+    el.textContent = '動画は読み込み済みです。「🔍 無音を検出」を押してください';
+  } else {
+    el.textContent = `✅ 検出済み：${speechRegions.length}クリップ（無音${silenceRegions.length}箇所をカット）`;
+  }
+  updateMcCutRunState();
+}
+
 function updateMcCutRunState() {
-  document.getElementById('btn-mc-cut-run').disabled = !(mcCutFcpxmlText && mcCutJsonData);
+  const ready = mcCutSource === 'builtin'
+    ? !!(mcCutFcpxmlText && speechRegions.length)
+    : !!(mcCutFcpxmlText && mcCutJsonData);
+  document.getElementById('btn-mc-cut-run').disabled = !ready;
 }
 
 function handleMcCutFcpxml(input) {
