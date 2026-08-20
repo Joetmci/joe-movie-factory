@@ -4359,7 +4359,10 @@ function closeMcCutFollowup() {
 function applyMcCutFollowupRemap() {
   closeMcCutFollowup();
   if (!mcCutLastXml) return;
-  try { remapEntriesWithFCPXML(mcCutLastXml); }
+  try {
+    remapEntriesWithFCPXML(mcCutLastXml);
+    toast('プレビューの動画はカット前のままです。確認にはFCPXで書き出したカット後の動画に差し替えてください', 'info');
+  }
   catch (e) { console.error(e); showRemapResult(false, e.message); }
 }
 
