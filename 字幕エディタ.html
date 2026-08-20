@@ -3275,6 +3275,18 @@ function showRemapResult(ok, msg) {
 }
 
 function remapEntriesWithFCPXML(xmlText) {
+  // マルチカム無音カットが埋め込んだ対応表があれば、そちらを優先して使う
+  // （mc-clipのstart属性はマルチカム内部時間なので、通常のロジックでは正しく合わせられないため）
+  const jmfMatch = xmlText.match(/<!--JMF-REMAP:([A-Za-z0-9+/=]+)-->/);
+  if (jmfMatch) {
+    try {
+      const pieces = JSON.parse(atob(jmfMatch[1]));
+      remapEntriesForMulticamCut(pieces);
+      return;
+    } catch (e) {
+      console.error('JMF-REMAP埋め込みデータの読み取りに失敗、通常の方法にフォールバック', e);
+    }
+  }
   // BOM除去・DOCTYPE宣言を無害化してからパース
   xmlText = xmlText.replace(/^﻿/, '');
   xmlText = xmlText.replace(/<!DOCTYPE[^>]*>/i, '');
