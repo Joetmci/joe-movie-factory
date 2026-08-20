@@ -3336,6 +3336,8 @@ function splashDismiss() {
     el.style.display = 'none';
     // スプラッシュが消えたら復元モーダルを表示
     showRestoreModal();
+    // 復元するデータがなければクイックスタートを表示
+    if (!_pendingRestore) showQuickStartModal();
   }, 520);
 }
 
