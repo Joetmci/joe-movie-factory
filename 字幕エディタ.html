@@ -4478,6 +4478,10 @@ ${srcLines}
     timelinePos += p.dur;
   });
   mcCutLastRemap = remapPieces;
+  // 旧→新タイムライン対応表をコメントとして埋め込む（FCPXは無視する）。
+  // これにより、書き出したfcpxmlを後で「タイムライン合わせ」に読み込んでも、
+  // マルチカム内部時間ではなく正しい対応表で字幕を合わせられる。
+  const remapB64 = btoa(JSON.stringify(remapPieces));
 
   const resXML = doc.querySelector('resources').innerHTML;
   const projName = (doc.querySelector('project') && doc.querySelector('project').getAttribute('name')) || 'timeline';
@@ -4497,6 +4501,7 @@ ${clips.join('\n')}
             </project>
         </event>
     </library>
+    <!--JMF-REMAP:${remapB64}-->
 </fcpxml>
 `;
 }
