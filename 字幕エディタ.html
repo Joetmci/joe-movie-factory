@@ -4130,7 +4130,7 @@ function mcCutNormalizeText(t) {
 
 function mcCutGetFillerRanges() {
   return entries
-    .filter(e => MC_CUT_FILLER_WORDS.has((e.text || '').trim()))
+    .filter(e => MC_CUT_FILLER_WORDS.has(mcCutNormalizeText(e.text)))
     .map(e => ({ start: timeToMs(e.start) / 1000, end: timeToMs(e.end) / 1000 }));
 }
 
