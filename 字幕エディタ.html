@@ -4363,12 +4363,39 @@ function closeMcCutFollowup() {
 
 function applyMcCutFollowupRemap() {
   closeMcCutFollowup();
-  if (!mcCutLastXml) return;
+  if (!mcCutLastRemap.length) return;
   try {
-    remapEntriesWithFCPXML(mcCutLastXml);
+    remapEntriesForMulticamCut(mcCutLastRemap);
     toast('プレビューの動画はカット前のままです。確認にはFCPXで書き出したカット後の動画に差し替えてください', 'info');
   }
   catch (e) { console.error(e); showRemapResult(false, e.message); }
+}
+
+// マルチカム無音カットの旧→新タイムライン対応表（mcCutLastRemap）を使って字幕を合わせる。
+// 通常のremapEntriesWithFCPXMLはmc-clipのstart属性（マルチカム内部時間）を
+// 「元動画の時間」として誤って扱ってしまうため、こちらは変換時に記録した
+// 「元シーケンス時間→新シーケンス時間」の対応を直接使う。
+function remapEntriesForMulticamCut(remapPieces) {
+  if (!entries.length) { toast('先にSRTを読み込んでください', 'err'); return; }
+  if (!remapPieces.length) { showRemapResult(false, '変換時の対応データが見つかりません。もう一度マルチカム無音カットを実行してください'); return; }
+  let remapped = 0, skipped = 0;
+  entries = entries.map(e => {
+    const startSec = timeToMs(e.start) / 1000;
+    const dur      = (timeToMs(e.end) - timeToMs(e.start)) / 1000;
+    const piece = remapPieces.find(p => startSec >= p.oldStart - 0.001 && startSec < p.oldEnd + 0.001);
+    if (!piece) { skipped++; return e; }
+    const newStart = piece.newStart + (startSec - piece.oldStart);
+    if (newStart < 0) { skipped++; return e; }
+    remapped++;
+    return { ...e, start: msToTime(Math.round(newStart * 1000)), end: msToTime(Math.round((newStart + dur) * 1000)) };
+  });
+  render();
+  autosave();
+  if (remapped === 0) {
+    showRemapResult(false, `変換できませんでした（全${skipped}件がカットで除去された区間のため）`);
+  } else {
+    showRemapResult(true, `${remapped}件のタイムコードを無音カット後のタイムラインに合わせました${skipped ? `（${skipped}件は無音としてカットされた区間のためスキップ）` : ''}`);
+  }
 }
 
 // mcText: マルチカムタイムラインfcpxmlの文字列
