@@ -4119,9 +4119,51 @@ function updateMcCutBuiltinStatus() {
   updateMcCutRunState();
 }
 
+// フィラー語（単語一致のみ。誤検出を避けるため文脈中の一部一致は対象外）
+const MC_CUT_FILLER_WORDS = new Set([
+  'あ','あー','ああ','あの','あのー','あのう','え','えー','えっと','えーと','えーっと',
+  'まあ','まぁ','その','そのー','うーん','うん','んー','んと','んーと','なんか','ええ','えっ'
+]);
+function mcCutNormalizeText(t) {
+  return (t || '').replace(/[、。！？\s　.,!?ー]/g, m => m === 'ー' ? 'ー' : '').trim();
+}
+
+function mcCutGetFillerRanges() {
+  return entries
+    .filter(e => MC_CUT_FILLER_WORDS.has((e.text || '').trim()))
+    .map(e => ({ start: timeToMs(e.start) / 1000, end: timeToMs(e.end) / 1000 }));
+}
+
+// keep区間からフィラー区間を差し引く（またがる場合は分割）
+function mcCutSubtractRanges(regions, removeRanges) {
+  let result = regions.map(r => ({ start: r.start, end: r.end }));
+  removeRanges.forEach(f => {
+    const next = [];
+    result.forEach(r => {
+      if (f.end <= r.start || f.start >= r.end) { next.push(r); return; }
+      if (f.start > r.start) next.push({ start: r.start, end: Math.min(f.start, r.end) });
+      if (f.end < r.end) next.push({ start: Math.max(f.end, r.start), end: r.end });
+    });
+    result = next;
+  });
+  return result.filter(r => r.end - r.start > 0.01);
+}
+
 // speechRegions（検出結果）を編集用リストにコピーし直す。既存の手編集は破棄される
 function syncMcCutKeepRegions() {
-  mcCutKeepRegions = speechRegions.map(r => ({ start: r.start, end: r.end }));
+  let regions = speechRegions.map(r => ({ start: r.start, end: r.end }));
+  if (document.getElementById('mc-cut-filler').checked) {
+    if (!entries.length) {
+      toast('文字起こしされていないためフィラー語は除外できません', 'info');
+    } else {
+      const fillers = mcCutGetFillerRanges();
+      if (fillers.length) {
+        regions = mcCutSubtractRanges(regions, fillers);
+        toast(`フィラー語 ${fillers.length}箇所を除外しました`, 'ok');
+      }
+    }
+  }
+  mcCutKeepRegions = regions;
   updateMcCutBuiltinStatus();
   renderMcCutKeepList();
 }
