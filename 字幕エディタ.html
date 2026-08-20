@@ -4126,10 +4126,18 @@ function handleMcCutJson(input) {
 }
 
 function runMulticamSilenceCut() {
-  if (!mcCutFcpxmlText || !mcCutJsonData) { toast('fcpxmlとjsonの両方を選択してください', 'err'); return; }
+  if (!mcCutFcpxmlText) { toast('①のfcpxmlを選択してください', 'err'); return; }
+  let cuts;
+  if (mcCutSource === 'builtin') {
+    if (!speechRegions.length) { toast('先に無音を検出してください', 'err'); return; }
+    cuts = speechRegions.map(r => ({ start: r.start, duration: r.end - r.start, operation: 'keep' }));
+  } else {
+    if (!mcCutJsonData) { toast('②のjsonを選択してください', 'err'); return; }
+    cuts = mcCutJsonData;
+  }
   const offsetSec = parseFloat(document.getElementById('mc-cut-offset').value) || 0;
   try {
-    const xml = convertMulticamTimeline(mcCutFcpxmlText, mcCutJsonData, offsetSec);
+    const xml = convertMulticamTimeline(mcCutFcpxmlText, cuts, offsetSec);
     download(xml, `${mcCutFcpxmlBase}_無音カット済み.fcpxml`, 'application/xml');
     toast('マルチカム無音カットfcpxmlを書き出しました', 'ok');
     closeMcCutModal();
