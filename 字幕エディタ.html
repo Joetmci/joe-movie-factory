@@ -4300,10 +4300,28 @@ function runMulticamSilenceCut() {
     download(xml, `${mcCutFcpxmlBase}_無音カット済み.fcpxml`, 'application/xml');
     toast('マルチカム無音カットfcpxmlを書き出しました', 'ok');
     closeMcCutModal();
+    mcCutLastXml = xml;
+    if (entries.length) {
+      document.getElementById('mc-cut-followup-count').textContent = entries.length;
+      document.getElementById('mc-cut-followup-modal').style.display = 'flex';
+    }
   } catch (e) {
     console.error(e);
     toast('変換に失敗しました: ' + e.message, 'err');
   }
+}
+
+let mcCutLastXml = null;
+
+function closeMcCutFollowup() {
+  document.getElementById('mc-cut-followup-modal').style.display = 'none';
+}
+
+function applyMcCutFollowupRemap() {
+  closeMcCutFollowup();
+  if (!mcCutLastXml) return;
+  try { remapEntriesWithFCPXML(mcCutLastXml); }
+  catch (e) { console.error(e); showRemapResult(false, e.message); }
 }
 
 // mcText: マルチカムタイムラインfcpxmlの文字列
