@@ -1043,11 +1043,12 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
       </div>
 
       <div id="mc-cut-builtin-box">
-        <div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px;" id="mc-cut-builtin-status">動画を読み込んでください</div>
-        <div style="display:flex;gap:8px;">
+        <div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px;" id="mc-cut-builtin-status">動画または音声を読み込んでください</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
           <button class="btn btn-secondary btn-sm" style="flex:1" onclick="document.getElementById('video-input').click()">🎥 動画を選択</button>
-          <button class="btn btn-secondary btn-sm" style="flex:1" onclick="runSilenceDetect();updateMcCutBuiltinStatus();">🔍 無音を検出</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1" onclick="document.getElementById('mc-cut-audio-input').click()" title="WAV/AIFF/M4Aなど。書き出しが速く軽い">🎵 音声のみ</button>
         </div>
+        <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="runSilenceDetect();updateMcCutBuiltinStatus();">🔍 無音を検出</button>
         <div style="font-size:10px;color:var(--text3);margin-top:6px;">左サイドバーの「無音の基準」などのスライダーがそのまま使われます</div>
       </div>
 
