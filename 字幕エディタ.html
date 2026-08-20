@@ -4253,6 +4253,7 @@ async function handleMcCutAudio(input) {
     const audioBuffer = await audioCtx.decodeAudioData(ab);
     audioCtx.close();
     wvAudioBuffer = audioBuffer;
+    currentVideoFile = file;   // 文字起こしはこの音声ファイルをそのままアップロードできる
     silenceRegions = [];
     speechRegions = [];
     mcCutKeepRegions = [];
