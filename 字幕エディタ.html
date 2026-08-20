@@ -1513,6 +1513,11 @@ function dismissRestore() {
   clearVideoFromIDB();
 }
 
+function showQuickStartModal()  { document.getElementById('quickstart-modal').style.display = 'flex'; }
+function closeQuickStartModal() { document.getElementById('quickstart-modal').style.display = 'none'; }
+function quickStartTelop()   { closeQuickStartModal(); document.getElementById('video-input').click(); }
+function quickStartSilence() { closeQuickStartModal(); openMcCutModal(); }
+
 window.addEventListener('beforeunload', ev => {
   if (entries.length && JSON.stringify(entries) !== _cleanState) {
     ev.preventDefault();
