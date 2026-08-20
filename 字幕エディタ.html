@@ -4342,7 +4342,7 @@ function showMcCutFollowup() {
     btn.textContent = '🔄 タイムラインに合わせる';
     btn.onclick = applyMcCutFollowupRemap;
   } else if (currentVideoFile) {
-    body.textContent = 'この動画（カット前）を文字起こしして、字幕・テロップ編集を始めます。文字起こし自体はカット前の動画で問題ありません。編集後は先ほどの「🔄 タイムラインに合わせる」でカット後のタイムラインに変換できます。';
+    body.textContent = '今読み込んでいる（カット前の）動画・音声をそのまま文字起こしして、字幕・テロップ編集を始めます。カット後の動画である必要はありません。編集後は無音カットのfcpxmlで「🔄 タイムラインに合わせる」ことでカット後のタイムラインに変換できます。';
     btn.textContent = '🎤 文字起こしを始める';
     btn.onclick = () => { closeMcCutFollowup(); startTranscribe(); };
   } else {
