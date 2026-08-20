@@ -4733,6 +4733,79 @@ function doWordSplit(entryId, splitAfterIdx) {
 
 
 
+// ── 一括修正（表記統一） ────────────────────────────────────────
+const BF_KANA_MAP = {
+  'ｦ':'ヲ','ｧ':'ァ','ｨ':'ィ','ｩ':'ゥ','ｪ':'ェ','ｫ':'ォ','ｬ':'ャ','ｭ':'ュ','ｮ':'ョ','ｯ':'ッ',
+  'ｰ':'ー','ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ','ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ',
+  'ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ','ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト',
+  'ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ','ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ',
+  'ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ','ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ',
+  'ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ','ﾜ':'ワ','ﾝ':'ン','ﾞ':'゛','ﾟ':'゜'
+};
+const BF_KANA_DAKUTEN = { 'カ':'ガ','キ':'ギ','ク':'グ','ケ':'ゲ','コ':'ゴ','サ':'ザ','シ':'ジ','ス':'ズ','セ':'ゼ','ソ':'ゾ',
+  'タ':'ダ','チ':'ヂ','ツ':'ヅ','テ':'デ','ト':'ド','ハ':'バ','ヒ':'ビ','フ':'ブ','ヘ':'ベ','ホ':'ボ' };
+const BF_KANA_HANDAKUTEN = { 'ハ':'パ','ヒ':'ピ','フ':'プ','ヘ':'ペ','ホ':'ポ' };
+
+function bfFullwidthAlnumToHalf(text) {
+  return text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+}
+function bfHalfKanaToFull(text) {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const mapped = BF_KANA_MAP[text[i]];
+    if (!mapped) { out += text[i]; continue; }
+    const next = text[i + 1];
+    if (next === 'ﾞ' && BF_KANA_DAKUTEN[mapped])      { out += BF_KANA_DAKUTEN[mapped]; i++; }
+    else if (next === 'ﾟ' && BF_KANA_HANDAKUTEN[mapped]) { out += BF_KANA_HANDAKUTEN[mapped]; i++; }
+    else { out += mapped; }
+  }
+  return out;
+}
+function bfNormalizeSpaces(text) { return text.replace(/[ 　\t]+/g, ' ').trim(); }
+function bfNormalizeEllipsis(text) { return text.replace(/\.{3,}/g, '…').replace(/。{2,}/g, '…'); }
+
+function _bulkFixOpts() {
+  return {
+    fullwidthAlnum: document.getElementById('bf-fullwidth-alnum').checked,
+    halfwidthKana:  document.getElementById('bf-halfwidth-kana').checked,
+    spaces:         document.getElementById('bf-spaces').checked,
+    ellipsis:       document.getElementById('bf-ellipsis').checked,
+  };
+}
+function bulkFixText(text, opts) {
+  if (opts.fullwidthAlnum) text = bfFullwidthAlnumToHalf(text);
+  if (opts.halfwidthKana)  text = bfHalfKanaToFull(text);
+  if (opts.spaces)         text = bfNormalizeSpaces(text);
+  if (opts.ellipsis)       text = bfNormalizeEllipsis(text);
+  return text;
+}
+function bulkFixPreview() {
+  const el = document.getElementById('bf-result');
+  if (!entries.length) { el.textContent = '字幕が読み込まれていません'; el.style.color = 'var(--text3)'; return; }
+  const opts = _bulkFixOpts();
+  const count = entries.filter(e => bulkFixText(e.text, opts) !== e.text).length;
+  el.textContent = count > 0 ? `${count}件の字幕が変更されます` : '変更対象の字幕はありません';
+  el.style.color = count > 0 ? 'var(--success)' : 'var(--text3)';
+}
+function bulkFixApply() {
+  if (!entries.length) { toast('字幕が読み込まれていません', 'err'); return; }
+  const opts = _bulkFixOpts();
+  if (!opts.fullwidthAlnum && !opts.halfwidthKana && !opts.spaces && !opts.ellipsis) {
+    toast('適用する項目を選んでください', 'err'); return;
+  }
+  let count = 0;
+  entries = entries.map(e => {
+    const fixed = bulkFixText(e.text, opts);
+    if (fixed === e.text) return e;
+    count++;
+    return { ...e, text: fixed };
+  });
+  render();
+  autosave();
+  toast(count > 0 ? `✅ ${count}件の表記を一括修正しました` : '変更対象の字幕はありませんでした', count > 0 ? 'ok' : 'info');
+  bulkFixPreview();
+}
+
 // ── 検索・一括置換 ────────────────────────────────────────────
 function openFindReplace(prefill) {
   const modal = document.getElementById('findreplace-modal');
