@@ -4326,14 +4326,30 @@ function runMulticamSilenceCut() {
     toast('マルチカム無音カットfcpxmlを書き出しました', 'ok');
     closeMcCutModal();
     mcCutLastXml = xml;
-    if (entries.length) {
-      document.getElementById('mc-cut-followup-count').textContent = entries.length;
-      document.getElementById('mc-cut-followup-modal').style.display = 'flex';
-    }
+    showMcCutFollowup();
   } catch (e) {
     console.error(e);
     toast('変換に失敗しました: ' + e.message, 'err');
   }
+}
+
+function showMcCutFollowup() {
+  const body = document.getElementById('mc-cut-followup-body');
+  const btn  = document.getElementById('mc-cut-followup-btn');
+  if (entries.length) {
+    body.textContent = `字幕${entries.length}件のタイムコードを、今書き出した無音カット後のタイムラインに合わせます。`;
+    btn.textContent = '🔄 タイムラインに合わせる';
+    btn.onclick = applyMcCutFollowupRemap;
+  } else if (currentVideoFile) {
+    body.textContent = 'この動画を文字起こしして、字幕・テロップ編集を始めます。';
+    btn.textContent = '🎤 文字起こしを始める';
+    btn.onclick = () => { closeMcCutFollowup(); startTranscribe(); };
+  } else {
+    body.textContent = '音声のみでは文字起こしできません。動画ファイルを選ぶと文字起こし・字幕編集に進めます。';
+    btn.textContent = '🎥 動画を選択';
+    btn.onclick = () => { closeMcCutFollowup(); document.getElementById('video-input').click(); };
+  }
+  document.getElementById('mc-cut-followup-modal').style.display = 'flex';
 }
 
 function closeMcCutFollowup() {
