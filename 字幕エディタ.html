@@ -4031,6 +4031,168 @@ function download(content, name, type) {
 }
 
 // ════════════════════════════════════════════
+//  マルチカム無音カット変換
+// ════════════════════════════════════════════
+let mcCutFcpxmlText = null, mcCutFcpxmlBase = '';
+let mcCutJsonData = null;
+
+function openMcCutModal()  { document.getElementById('mc-cut-modal').classList.add('open'); }
+function closeMcCutModal() { document.getElementById('mc-cut-modal').classList.remove('open'); }
+
+function updateMcCutRunState() {
+  document.getElementById('btn-mc-cut-run').disabled = !(mcCutFcpxmlText && mcCutJsonData);
+}
+
+function handleMcCutFcpxml(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    mcCutFcpxmlText = ev.target.result;
+    mcCutFcpxmlBase = file.name.replace(/\.(fcpxml|xml)$/i, '');
+    document.getElementById('mc-cut-fcpxml-name').textContent = '✅ ' + file.name;
+    updateMcCutRunState();
+  };
+  reader.onerror = () => toast('fcpxmlの読み込みに失敗しました', 'err');
+  reader.readAsText(file, 'UTF-8');
+}
+
+function handleMcCutJson(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error('jsonが配列ではありません');
+      mcCutJsonData = data;
+      document.getElementById('mc-cut-json-name').textContent = `✅ ${file.name}（${data.length}件）`;
+      updateMcCutRunState();
+    } catch (e) {
+      console.error(e);
+      toast('jsonの解析に失敗しました: ' + e.message, 'err');
+    }
+  };
+  reader.onerror = () => toast('jsonの読み込みに失敗しました', 'err');
+  reader.readAsText(file, 'UTF-8');
+}
+
+function runMulticamSilenceCut() {
+  if (!mcCutFcpxmlText || !mcCutJsonData) { toast('fcpxmlとjsonの両方を選択してください', 'err'); return; }
+  const offsetSec = parseFloat(document.getElementById('mc-cut-offset').value) || 0;
+  try {
+    const xml = convertMulticamTimeline(mcCutFcpxmlText, mcCutJsonData, offsetSec);
+    download(xml, `${mcCutFcpxmlBase}_無音カット済み.fcpxml`, 'application/xml');
+    toast('マルチカム無音カットfcpxmlを書き出しました', 'ok');
+    closeMcCutModal();
+  } catch (e) {
+    console.error(e);
+    toast('変換に失敗しました: ' + e.message, 'err');
+  }
+}
+
+// mcText: マルチカムタイムラインfcpxmlの文字列
+// cuts: 無音判定json（{start, duration, operation:"keep"|"remove"}の配列）をパースしたもの
+// offsetSec: 全カット位置に加算する先頭オフセット（秒）
+function convertMulticamTimeline(mcText, cuts, offsetSec) {
+  const doc = new DOMParser().parseFromString(mcText, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('fcpxmlの解析に失敗');
+
+  const fcpxmlEl = doc.querySelector('fcpxml');
+  const version = (fcpxmlEl && fcpxmlEl.getAttribute('version')) || '1.14';
+
+  const fmt = doc.querySelector('resources > format');
+  const frameDur = fmt ? fmt.getAttribute('frameDuration') : '100/6000s';
+  let tb = 6000;
+  const fm = /^(\d+)\/(\d+)s$/.exec(frameDur || '');
+  if (fm) { tb = parseInt(fm[2],10); }
+  const seqFormat = fmt ? fmt.getAttribute('id') : 'r1';
+
+  function parseTB(v) {
+    if (v == null) return 0;
+    v = String(v).trim();
+    if (v === '0s' || v === '0') return 0;
+    let m = /^(-?\d+)\/(\d+)s$/.exec(v);
+    if (m) return Math.round(parseInt(m[1],10)*tb/parseInt(m[2],10));
+    let m2 = /^(-?\d+(?:\.\d+)?)s$/.exec(v);
+    if (m2) return Math.round(parseFloat(m2[1])*tb);
+    return 0;
+  }
+  const round = n => Math.round(n);
+  const mcEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  const seq = doc.querySelector('project > sequence');
+  const spine = seq ? seq.querySelector('spine') : null;
+  if (!spine) throw new Error('タイムライン(spine)が見つかりません');
+  const mcClips = spine.querySelectorAll(':scope > mc-clip');
+  if (!mcClips.length) throw new Error('マルチカムクリップがありません');
+
+  const segs = [];
+  mcClips.forEach(mc => {
+    const off = parseTB(mc.getAttribute('offset'));
+    const dur = parseTB(mc.getAttribute('duration'));
+    const st  = parseTB(mc.getAttribute('start'));
+    const sources = [];
+    mc.querySelectorAll(':scope > mc-source').forEach(s => {
+      sources.push({ angleID: s.getAttribute('angleID'), srcEnable: s.getAttribute('srcEnable') || 'all' });
+    });
+    segs.push({ tlStart: off, tlEnd: off+dur, srcStart: st, ref: mc.getAttribute('ref'), name: mc.getAttribute('name')||'clip', sources });
+  });
+  segs.sort((a,b) => a.tlStart - b.tlStart);
+
+  const keeps = cuts.filter(c => c.operation === 'keep');
+  if (!keeps.length) throw new Error('keep区間がありません');
+
+  const pieces = [];
+  keeps.forEach(k => {
+    const a = round(((k.start||0)+offsetSec)*tb);
+    const b = round(((k.start||0)+offsetSec+(k.duration||0))*tb);
+    if (b <= a) return;
+    segs.forEach(sg => {
+      const s = Math.max(a, sg.tlStart), e = Math.min(b, sg.tlEnd);
+      if (e > s) pieces.push({ seg: sg, srcStart: (s - sg.tlStart) + sg.srcStart, dur: (e - s) });
+    });
+  });
+  if (!pieces.length) throw new Error('カット後に残る区間がありません(時間軸がずれている可能性)');
+
+  let timelinePos = 0;
+  const clips = [];
+  pieces.forEach(p => {
+    const srcAttr = ` start="${p.srcStart}/${tb}s"`;
+    const srcLines = p.seg.sources.map(s =>
+      `                        <mc-source angleID="${s.angleID}" srcEnable="${s.srcEnable}"/>`).join('\n');
+    clips.push(
+`                    <mc-clip ref="${p.seg.ref}" offset="${timelinePos}/${tb}s" name="${mcEsc(p.seg.name)}" duration="${p.dur}/${tb}s"${srcAttr}>
+${srcLines}
+                    </mc-clip>`);
+    timelinePos += p.dur;
+  });
+
+  const resXML = doc.querySelector('resources').innerHTML;
+  const projName = (doc.querySelector('project') && doc.querySelector('project').getAttribute('name')) || 'timeline';
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+<fcpxml version="${version}">
+    <resources>${resXML}</resources>
+    <library>
+        <event name="無音カット済み">
+            <project name="${mcEsc(projName)} (無音カット済み)">
+                <sequence format="${seqFormat}" duration="${timelinePos}/${tb}s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
+                    <spine>
+${clips.join('\n')}
+                    </spine>
+                </sequence>
+            </project>
+        </event>
+    </library>
+</fcpxml>
+`;
+}
+
+// ════════════════════════════════════════════
 //  Resize handle
 // ════════════════════════════════════════════
 (function() {
