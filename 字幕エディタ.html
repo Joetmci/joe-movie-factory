@@ -4429,13 +4429,15 @@ function convertMulticamTimeline(mcText, cuts, offsetSec) {
     if (b <= a) return;
     segs.forEach(sg => {
       const s = Math.max(a, sg.tlStart), e = Math.min(b, sg.tlEnd);
-      if (e > s) pieces.push({ seg: sg, srcStart: (s - sg.tlStart) + sg.srcStart, dur: (e - s) });
+      // oldStart: 元シーケンス上の位置を、検出に使った動画（＝SRTの時間軸）の秒数に戻したもの
+      if (e > s) pieces.push({ seg: sg, srcStart: (s - sg.tlStart) + sg.srcStart, dur: (e - s), oldStart: s / tb - offsetSec });
     });
   });
   if (!pieces.length) throw new Error('カット後に残る区間がありません(時間軸がずれている可能性)');
 
   let timelinePos = 0;
   const clips = [];
+  const remapPieces = [];
   pieces.forEach(p => {
     const srcAttr = ` start="${p.srcStart}/${tb}s"`;
     const srcLines = p.seg.sources.map(s =>
@@ -4444,8 +4446,10 @@ function convertMulticamTimeline(mcText, cuts, offsetSec) {
 `                    <mc-clip ref="${p.seg.ref}" offset="${timelinePos}/${tb}s" name="${mcEsc(p.seg.name)}" duration="${p.dur}/${tb}s"${srcAttr}>
 ${srcLines}
                     </mc-clip>`);
+    remapPieces.push({ oldStart: p.oldStart, oldEnd: p.oldStart + p.dur / tb, newStart: timelinePos / tb });
     timelinePos += p.dur;
   });
+  mcCutLastRemap = remapPieces;
 
   const resXML = doc.querySelector('resources').innerHTML;
   const projName = (doc.querySelector('project') && doc.querySelector('project').getAttribute('name')) || 'timeline';
