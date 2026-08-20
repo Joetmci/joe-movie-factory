@@ -4181,7 +4181,7 @@ async function handleMcCutAudio(input) {
 
 function updateMcCutRunState() {
   const ready = mcCutSource === 'builtin'
-    ? !!(mcCutFcpxmlText && speechRegions.length)
+    ? !!(mcCutFcpxmlText && mcCutKeepRegions.length)
     : !!(mcCutFcpxmlText && mcCutJsonData);
   document.getElementById('btn-mc-cut-run').disabled = !ready;
 }
