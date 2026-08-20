@@ -4337,11 +4337,11 @@ function showMcCutFollowup() {
   const body = document.getElementById('mc-cut-followup-body');
   const btn  = document.getElementById('mc-cut-followup-btn');
   if (entries.length) {
-    body.textContent = `字幕${entries.length}件のタイムコードを、今書き出した無音カット後のタイムラインに合わせます。`;
+    body.textContent = `字幕${entries.length}件のタイムコードを、今書き出した無音カット後のタイムラインに合わせます。書き出すXMLは正しく変換されますが、今このアプリで再生できる動画はカット前のままなので、プレビューで確認したい場合はFCPXで無音カット後に書き出した動画に差し替えてください。`;
     btn.textContent = '🔄 タイムラインに合わせる';
     btn.onclick = applyMcCutFollowupRemap;
   } else if (currentVideoFile) {
-    body.textContent = 'この動画を文字起こしして、字幕・テロップ編集を始めます。';
+    body.textContent = 'この動画（カット前）を文字起こしして、字幕・テロップ編集を始めます。文字起こし自体はカット前の動画で問題ありません。編集後は先ほどの「🔄 タイムラインに合わせる」でカット後のタイムラインに変換できます。';
     btn.textContent = '🎤 文字起こしを始める';
     btn.onclick = () => { closeMcCutFollowup(); startTranscribe(); };
   } else {
