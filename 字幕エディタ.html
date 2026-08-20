@@ -4226,8 +4226,9 @@ function runMulticamSilenceCut() {
   if (!mcCutFcpxmlText) { toast('①のfcpxmlを選択してください', 'err'); return; }
   let cuts;
   if (mcCutSource === 'builtin') {
-    if (!speechRegions.length) { toast('先に無音を検出してください', 'err'); return; }
-    cuts = speechRegions.map(r => ({ start: r.start, duration: r.end - r.start, operation: 'keep' }));
+    const valid = mcCutKeepRegions.filter(r => r.end > r.start);
+    if (!valid.length) { toast('先に無音を検出してください', 'err'); return; }
+    cuts = valid.map(r => ({ start: r.start, duration: r.end - r.start, operation: 'keep' }));
   } else {
     if (!mcCutJsonData) { toast('②のjsonを選択してください', 'err'); return; }
     cuts = mcCutJsonData;
