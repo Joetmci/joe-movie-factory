@@ -4087,10 +4087,12 @@ function download(content, name, type) {
 let mcCutFcpxmlText = null, mcCutFcpxmlBase = '';
 let mcCutJsonData = null;
 let mcCutSource = 'builtin';
+let mcCutKeepRegions = [];   // [{start,end}] 秒（speechRegionsのコピーを個別編集する）
 
 function openMcCutModal()  {
   document.getElementById('mc-cut-modal').classList.add('open');
   updateMcCutBuiltinStatus();
+  renderMcCutKeepList();
 }
 function closeMcCutModal() { document.getElementById('mc-cut-modal').classList.remove('open'); }
 
