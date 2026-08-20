@@ -4075,13 +4075,35 @@ function switchMcCutSource(v) {
 function updateMcCutBuiltinStatus() {
   const el = document.getElementById('mc-cut-builtin-status');
   if (!wvAudioBuffer) {
-    el.textContent = '動画が未選択です（🎥 動画を選択 → 🔍 無音を検出）';
+    el.textContent = '動画または音声が未選択です（🎥/🎵 選択 → 🔍 無音を検出）';
   } else if (!speechRegions.length) {
-    el.textContent = '動画は読み込み済みです。「🔍 無音を検出」を押してください';
+    el.textContent = '読み込み済みです。「🔍 無音を検出」を押してください';
   } else {
     el.textContent = `✅ 検出済み：${speechRegions.length}クリップ（無音${silenceRegions.length}箇所をカット）`;
   }
   updateMcCutRunState();
+}
+
+async function handleMcCutAudio(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const statusEl = document.getElementById('mc-cut-builtin-status');
+  statusEl.textContent = '音声を解析中…';
+  try {
+    const ab = await file.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioBuffer = await audioCtx.decodeAudioData(ab);
+    audioCtx.close();
+    wvAudioBuffer = audioBuffer;
+    silenceRegions = [];
+    speechRegions = [];
+    toast('音声を読み込みました。「🔍 無音を検出」を押してください', 'ok');
+  } catch (e) {
+    console.error(e);
+    toast('音声の読み込みに失敗しました: ' + e.message, 'err');
+  }
+  updateMcCutBuiltinStatus();
 }
 
 function updateMcCutRunState() {
