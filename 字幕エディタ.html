@@ -4132,6 +4132,7 @@ let mcCutJsonData = null;
 let mcCutSource = 'builtin';
 let mcCutKeepRegions = [];   // [{start,end}] 秒（speechRegionsのコピーを個別編集する）
 let mcCutLastXml = null;     // 直近に書き出したカット済みfcpxml（続けてタイムライン合わせに使う）
+let mcCutLastRemap = [];     // 直近の変換の旧→新タイムライン対応表（マルチカム字幕remap用）
 
 function openMcCutModal()  {
   document.getElementById('mc-cut-modal').classList.add('open');
