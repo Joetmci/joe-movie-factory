@@ -631,6 +631,8 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   <input type="file" id="srt-input" accept=".srt" style="display:none">
   <input type="file" id="video-input" accept="video/*" style="display:none">
   <input type="file" id="fcpxml-remap-input" style="display:none" onchange="handleFCPXMLRemap(this)">
+  <input type="file" id="mc-cut-fcpxml-input" accept=".fcpxml,.xml" style="display:none" onchange="handleMcCutFcpxml(this)">
+  <input type="file" id="mc-cut-json-input" accept=".json" style="display:none" onchange="handleMcCutJson(this)">
 
   <!-- 動画を開く -->
   <button class="btn btn-secondary" id="btn-load-video" onclick="document.getElementById('video-input').click()" style="font-size:14px;padding:9px 20px;">
