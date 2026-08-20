@@ -1330,6 +1330,27 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   </div>
 </div>
 
+<!-- 起動時クイックスタート -->
+<div class="modal-overlay" id="quickstart-modal" style="display:none;">
+  <div class="modal" style="max-width:520px;text-align:center;padding:36px 32px;position:relative;">
+    <button onclick="closeQuickStartModal()" title="閉じる" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;line-height:1;padding:4px;">✕</button>
+    <h2 style="font-size:19px;font-weight:700;color:var(--text);margin-bottom:6px;">何をしますか？</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:26px;">やりたいことを選んでください</p>
+    <div style="display:flex;gap:14px;">
+      <div onclick="quickStartTelop()" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 16px;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:36px;margin-bottom:12px;">💬</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text);">テロップ編集</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6;">動画を読み込んで<br>字幕・テロップを作る</div>
+      </div>
+      <div onclick="quickStartSilence()" style="flex:1;background:var(--surface);border:1px solid rgba(155,107,242,0.35);border-radius:14px;padding:26px 16px;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='rgba(155,107,242,0.35)'">
+        <div style="font-size:36px;margin-bottom:12px;">✂️</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text);">無音編集</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6;">無音部分をカットして<br>FCPXMLを書き出す</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- カット検出 進捗モーダル -->
 <div class="modal-overlay" id="cut-progress-modal" style="display:none; align-items:center; justify-content:center; z-index:9000;">
   <div class="modal" style="width:340px;text-align:center;padding:32px 28px;">
