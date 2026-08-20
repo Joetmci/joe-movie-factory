@@ -4169,6 +4169,8 @@ async function handleMcCutAudio(input) {
     wvAudioBuffer = audioBuffer;
     silenceRegions = [];
     speechRegions = [];
+    mcCutKeepRegions = [];
+    renderMcCutKeepList();
     toast('音声を読み込みました。「🔍 無音を検出」を押してください', 'ok');
   } catch (e) {
     console.error(e);
