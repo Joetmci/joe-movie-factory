@@ -2999,7 +2999,7 @@ async function changeModel(model) {
 
 // ── カスタム語彙 ─────────────────────────────────────────
 function switchDictTab(tab) {
-  ['replace','hint','learn'].forEach(t => {
+  ['replace','hint','learn','fix'].forEach(t => {
     const btn  = document.getElementById(`dict-tab-${t}`);
     const pane = document.getElementById(`dict-pane-${t}`);
     const active = t === tab;
