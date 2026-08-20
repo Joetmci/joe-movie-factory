@@ -4107,6 +4107,7 @@ let mcCutFcpxmlText = null, mcCutFcpxmlBase = '';
 let mcCutJsonData = null;
 let mcCutSource = 'builtin';
 let mcCutKeepRegions = [];   // [{start,end}] 秒（speechRegionsのコピーを個別編集する）
+let mcCutLastXml = null;     // 直近に書き出したカット済みfcpxml（続けてタイムライン合わせに使う）
 
 function openMcCutModal()  {
   document.getElementById('mc-cut-modal').classList.add('open');
