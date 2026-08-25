@@ -4487,17 +4487,19 @@ function convertMulticamTimeline(mcText, cuts, offsetSec) {
   });
   if (!pieces.length) throw new Error('カット後に残る区間がありません(時間軸がずれている可能性)');
 
+  // 各断片は元のクリップ要素をそのままクローンし、offset/duration/startだけ
+  // 新しい値に書き換える。mc-clip・asset-clip・clipなど、要素の種類によらず
+  // 内部構造（mc-source、フィルタ、オーディオチャンネル等）はそのまま維持される。
   let timelinePos = 0;
   const clips = [];
   const remapPieces = [];
+  const serializer = new XMLSerializer();
   pieces.forEach(p => {
-    const srcAttr = ` start="${p.srcStart}/${tb}s"`;
-    const srcLines = p.seg.sources.map(s =>
-      `                        <mc-source angleID="${s.angleID}" srcEnable="${s.srcEnable}"/>`).join('\n');
-    clips.push(
-`                    <mc-clip ref="${p.seg.ref}" offset="${timelinePos}/${tb}s" name="${mcEsc(p.seg.name)}" duration="${p.dur}/${tb}s"${srcAttr}>
-${srcLines}
-                    </mc-clip>`);
+    const clone = p.seg.el.cloneNode(true);
+    clone.setAttribute('offset', `${timelinePos}/${tb}s`);
+    clone.setAttribute('duration', `${p.dur}/${tb}s`);
+    clone.setAttribute('start', `${p.srcStart}/${tb}s`);
+    clips.push(serializer.serializeToString(clone));
     remapPieces.push({ oldStart: p.oldStart, oldEnd: p.oldStart + p.dur / tb, newStart: timelinePos / tb });
     timelinePos += p.dur;
   });
