@@ -4231,12 +4231,12 @@ function syncMcCutKeepRegions() {
   let regions = speechRegions.map(r => ({ start: r.start, end: r.end }));
   if (document.getElementById('mc-cut-filler').checked) {
     if (!entries.length) {
-      toast('文字起こしされていないためフィラー語は除外できません', 'info');
+      toast('文字起こしされていないためフィラー語・咳払いは除外できません', 'info');
     } else {
       const fillers = mcCutGetFillerRanges();
       if (fillers.length) {
         regions = mcCutSubtractRanges(regions, fillers);
-        toast(`フィラー語 ${fillers.length}箇所を除外しました`, 'ok');
+        toast(`フィラー語・咳払いなど ${fillers.length}箇所を除外しました`, 'ok');
       }
     }
   }
