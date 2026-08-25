@@ -4389,7 +4389,7 @@ function applyMcCutFollowupRemap() {
 // 「元シーケンス時間→新シーケンス時間」の対応を直接使う。
 function remapEntriesForMulticamCut(remapPieces) {
   if (!entries.length) { toast('先にSRTを読み込んでください', 'err'); return; }
-  if (!remapPieces.length) { showRemapResult(false, '変換時の対応データが見つかりません。もう一度マルチカム無音カットを実行してください'); return; }
+  if (!remapPieces.length) { showRemapResult(false, '変換時の対応データが見つかりません。もう一度無音カット変換を実行してください'); return; }
   let remapped = 0, skipped = 0;
   entries = entries.map(e => {
     const startSec = timeToMs(e.start) / 1000;
