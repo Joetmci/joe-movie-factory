@@ -2391,7 +2391,14 @@ function loadSRT(file) {
 }
 
 // Drag & drop (both SRT and video)
-document.body.addEventListener('dragover', ev => { ev.preventDefault(); document.getElementById('dropzone').classList.add('active'); });
+document.body.addEventListener('dragover', ev => {
+  ev.preventDefault();
+  const dz = document.getElementById('dropzone');
+  dz.textContent = document.getElementById('mc-cut-modal').classList.contains('open')
+    ? 'fcpxml / .fcpxmldをドロップ'
+    : 'SRTファイルをドロップ';
+  dz.classList.add('active');
+});
 document.body.addEventListener('dragleave', ev => { if (!ev.relatedTarget) document.getElementById('dropzone').classList.remove('active'); });
 document.body.addEventListener('drop', ev => {
   ev.preventDefault();
