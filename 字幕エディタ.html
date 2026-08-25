@@ -4187,16 +4187,27 @@ function updateMcCutBuiltinStatus() {
 
 // フィラー語（単語一致のみ。誤検出を避けるため文脈中の一部一致は対象外）
 const MC_CUT_FILLER_WORDS = new Set([
-  'あ','あー','ああ','あの','あのー','あのう','え','えー','えっと','えーと','えーっと',
-  'まあ','まぁ','その','そのー','うーん','うん','んー','んと','んーと','なんか','ええ','えっ'
+  'あ','あー','ああ','あの','あのー','あのう','え','えー','えっと','えーと','えーっと','えっとー',
+  'まあ','まぁ','まー','その','そのー','そのう','うーん','うん','んー','んと','んーと','んーっと',
+  'なんか','ええ','えっ','はぁ','はー','ふぅ','ふー','おー','おお'
 ]);
 function mcCutNormalizeText(t) {
   return (t || '').replace(/[、。！？\s　.,!?ー]/g, m => m === 'ー' ? 'ー' : '').trim();
 }
 
+// 咳払い・息継ぎ・うめき等のノイズ判定（短い時間 + 意味のない断片の組み合わせのみ対象。
+// 誤検出防止のため、フィラー語リストのような固定単語一致より条件を厳しくしている）
+function mcCutIsNoiseEntry(e) {
+  const t = mcCutNormalizeText(e.text);
+  if (!t) return true;
+  const durSec = (timeToMs(e.end) - timeToMs(e.start)) / 1000;
+  if (durSec > 0.45 || t.length > 2) return false;
+  return /^[んっーはひふへほあぁいぃうぅえぇおぉ]+$/.test(t);
+}
+
 function mcCutGetFillerRanges() {
   return entries
-    .filter(e => MC_CUT_FILLER_WORDS.has(mcCutNormalizeText(e.text)))
+    .filter(e => MC_CUT_FILLER_WORDS.has(mcCutNormalizeText(e.text)) || mcCutIsNoiseEntry(e))
     .map(e => ({ start: timeToMs(e.start) / 1000, end: timeToMs(e.end) / 1000 }));
 }
 
