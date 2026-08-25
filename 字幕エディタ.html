@@ -4202,7 +4202,8 @@ function mcCutIsNoiseEntry(e) {
   if (!t) return true;
   const durSec = (timeToMs(e.end) - timeToMs(e.start)) / 1000;
   if (durSec > 0.45 || t.length > 2) return false;
-  return /^[んっーはひふへほあぁいぃうぅえぇおぉ]+$/.test(t);
+  // 「はい」等の実語を誤って拾わないよう、通常サイズの母音（あいうえお）は含めない
+  return /^[んっーはひふへほぁぃぅぇぉ]+$/.test(t);
 }
 
 function mcCutGetFillerRanges() {
