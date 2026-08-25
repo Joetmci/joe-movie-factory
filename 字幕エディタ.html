@@ -4467,11 +4467,7 @@ function convertMulticamTimeline(mcText, cuts, offsetSec) {
     const off = parseTB(mc.getAttribute('offset'));
     const dur = parseTB(mc.getAttribute('duration'));
     const st  = parseTB(mc.getAttribute('start'));
-    const sources = [];
-    mc.querySelectorAll(':scope > mc-source').forEach(s => {
-      sources.push({ angleID: s.getAttribute('angleID'), srcEnable: s.getAttribute('srcEnable') || 'all' });
-    });
-    segs.push({ tlStart: off, tlEnd: off+dur, srcStart: st, ref: mc.getAttribute('ref'), name: mc.getAttribute('name')||'clip', sources });
+    segs.push({ tlStart: off, tlEnd: off+dur, srcStart: st, el: mc });
   });
   segs.sort((a,b) => a.tlStart - b.tlStart);
 
