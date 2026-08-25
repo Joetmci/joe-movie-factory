@@ -4504,7 +4504,8 @@ ${srcLines}
   const remapB64 = btoa(JSON.stringify(remapPieces));
 
   const resXML = doc.querySelector('resources').innerHTML;
-  const projName = (doc.querySelector('project') && doc.querySelector('project').getAttribute('name')) || 'timeline';
+  const srcProject = spine.closest('project');
+  const projName = (srcProject && srcProject.getAttribute('name')) || 'timeline';
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE fcpxml>
