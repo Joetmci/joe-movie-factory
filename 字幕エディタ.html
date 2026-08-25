@@ -4294,14 +4294,18 @@ function handleMcCutFcpxml(input) {
   input.value = '';
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
-    mcCutFcpxmlText = ev.target.result;
-    mcCutFcpxmlBase = file.name.replace(/\.(fcpxml|xml)$/i, '');
-    document.getElementById('mc-cut-fcpxml-name').textContent = '✅ ' + file.name;
-    updateMcCutRunState();
-  };
+  reader.onload = ev => loadMcCutFcpxmlText(ev.target.result, file.name);
   reader.onerror = () => toast('fcpxmlの読み込みに失敗しました', 'err');
   reader.readAsText(file, 'UTF-8');
+}
+
+// ①のfcpxmlを、テキスト内容から直接セットする（ファイル選択・ドラッグ＆ドロップ共通）
+function loadMcCutFcpxmlText(xmlText, displayName) {
+  mcCutFcpxmlText = xmlText;
+  mcCutFcpxmlBase = displayName.replace(/\.(fcpxml|xml)$/i, '');
+  document.getElementById('mc-cut-fcpxml-name').textContent = '✅ ' + displayName;
+  updateMcCutRunState();
+  toast(`📂 ${displayName} を読み込みました`, 'ok');
 }
 
 function handleMcCutJson(input) {
