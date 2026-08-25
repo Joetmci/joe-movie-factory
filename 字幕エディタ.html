@@ -4340,7 +4340,7 @@ function runMulticamSilenceCut() {
   try {
     const xml = convertMulticamTimeline(mcCutFcpxmlText, cuts, offsetSec);
     download(xml, `${mcCutFcpxmlBase}_無音カット済み.fcpxml`, 'application/xml');
-    toast('マルチカム無音カットfcpxmlを書き出しました', 'ok');
+    toast('無音カット済みfcpxmlを書き出しました', 'ok');
     closeMcCutModal();
     mcCutLastXml = xml;
     showMcCutFollowup();
