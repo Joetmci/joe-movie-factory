@@ -1029,9 +1029,12 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
     </div>
     <div class="field">
       <label>① タイムライン全体のfcpxml</label>
-      <button class="btn btn-secondary btn-sm" style="width:100%;justify-content:flex-start;" onclick="document.getElementById('mc-cut-fcpxml-input').click()">📂 ファイルを選択</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:flex-start;" onclick="document.getElementById('mc-cut-fcpxml-input').click()">📂 ファイルを選択</button>
+        <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:flex-start;" onclick="document.getElementById('mc-cut-fcpxmld-input').click()" title=".fcpxmldパッケージ（フォルダ）を選ぶと、中のInfo.fcpxmlを自動で読み込みます">📦 .fcpxmldを選択</button>
+      </div>
       <div style="font-size:11px;color:var(--text2);margin-top:5px;" id="mc-cut-fcpxml-name">未選択</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px;">.fcpxmldパッケージは画面にドラッグ＆ドロップでも読み込めます（パッケージの中を開く必要はありません）</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px;">.fcpxmldパッケージは画面へのドラッグ＆ドロップでも読み込めます</div>
     </div>
     <div class="field">
       <label>② 無音判定</label>
