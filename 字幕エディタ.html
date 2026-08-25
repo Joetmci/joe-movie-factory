@@ -4440,11 +4440,19 @@ function convertMulticamTimeline(mcText, cuts, offsetSec) {
   const round = n => Math.round(n);
   const mcEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-  const seq = doc.querySelector('project > sequence');
-  const spine = seq ? seq.querySelector('spine') : null;
-  if (!spine) throw new Error('タイムライン(spine)が見つかりません');
+  // 1つのfcpxmlに複数のprojectが含まれる場合がある（例：ライブラリ全体を書き出した時の
+  // 「素材」プロジェクトなど）。mc-clipを持つspineを探して使う。
+  let spine = null;
+  doc.querySelectorAll('project > sequence').forEach(seq => {
+    if (spine) return;
+    const sp = seq.querySelector('spine');
+    if (sp && sp.querySelector(':scope > mc-clip')) spine = sp;
+  });
+  if (!spine) {
+    const seqCount = doc.querySelectorAll('project > sequence').length;
+    throw new Error(`マルチカムクリップを含むタイムラインが見つかりません（fcpxml内に${seqCount}個のプロジェクトがありますが、いずれもmc-clipを含んでいません）`);
+  }
   const mcClips = spine.querySelectorAll(':scope > mc-clip');
-  if (!mcClips.length) throw new Error('マルチカムクリップがありません');
 
   const segs = [];
   mcClips.forEach(mc => {
