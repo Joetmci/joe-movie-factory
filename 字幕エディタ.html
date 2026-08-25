@@ -4423,19 +4423,24 @@ function convertMulticamTimeline(mcText, cuts, offsetSec) {
   const round = n => Math.round(n);
   const mcEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+  // spine直下に置かれるクリップ系タグ（マルチカムに限らず対応）。
+  // transitionはまたがるクリップの再計算が必要になるため今回は対象外（そのまま無視される）。
+  const CLIP_TAGS = ['mc-clip', 'asset-clip', 'clip', 'ref-clip', 'sync-clip'];
+  const clipSelector = CLIP_TAGS.map(t => `:scope > ${t}`).join(', ');
+
   // 1つのfcpxmlに複数のprojectが含まれる場合がある（例：ライブラリ全体を書き出した時の
-  // 「素材」プロジェクトなど）。mc-clipを持つ方のsequence/spineを探して使う。
+  // 「素材」プロジェクトなど）。実際にクリップを持つ方のsequence/spineを探して使う。
   let spine = null, targetSeq = null;
   doc.querySelectorAll('project > sequence').forEach(seq => {
     if (spine) return;
     const sp = seq.querySelector('spine');
-    if (sp && sp.querySelector(':scope > mc-clip')) { spine = sp; targetSeq = seq; }
+    if (sp && sp.querySelector(clipSelector)) { spine = sp; targetSeq = seq; }
   });
   if (!spine) {
     const seqCount = doc.querySelectorAll('project > sequence').length;
-    throw new Error(`マルチカムクリップを含むタイムラインが見つかりません（fcpxml内に${seqCount}個のプロジェクトがありますが、いずれもmc-clipを含んでいません）`);
+    throw new Error(`クリップを含むタイムラインが見つかりません（fcpxml内に${seqCount}個のプロジェクトがありますが、いずれもクリップを含んでいません）`);
   }
-  const mcClips = spine.querySelectorAll(':scope > mc-clip');
+  const mcClips = spine.querySelectorAll(clipSelector);
 
   // タイムベースは「見つけたシーケンス自身」が参照するformatから求める
   // （fcpxml内に複数formatがある場合、resources内の最初のformatとは限らないため）
