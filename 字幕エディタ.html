@@ -4420,12 +4420,31 @@ function convertMulticamTimeline(mcText, cuts, offsetSec) {
   const fcpxmlEl = doc.querySelector('fcpxml');
   const version = (fcpxmlEl && fcpxmlEl.getAttribute('version')) || '1.14';
 
-  const fmt = doc.querySelector('resources > format');
+  const round = n => Math.round(n);
+  const mcEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  // 1つのfcpxmlに複数のprojectが含まれる場合がある（例：ライブラリ全体を書き出した時の
+  // 「素材」プロジェクトなど）。mc-clipを持つ方のsequence/spineを探して使う。
+  let spine = null, targetSeq = null;
+  doc.querySelectorAll('project > sequence').forEach(seq => {
+    if (spine) return;
+    const sp = seq.querySelector('spine');
+    if (sp && sp.querySelector(':scope > mc-clip')) { spine = sp; targetSeq = seq; }
+  });
+  if (!spine) {
+    const seqCount = doc.querySelectorAll('project > sequence').length;
+    throw new Error(`マルチカムクリップを含むタイムラインが見つかりません（fcpxml内に${seqCount}個のプロジェクトがありますが、いずれもmc-clipを含んでいません）`);
+  }
+  const mcClips = spine.querySelectorAll(':scope > mc-clip');
+
+  // タイムベースは「見つけたシーケンス自身」が参照するformatから求める
+  // （fcpxml内に複数formatがある場合、resources内の最初のformatとは限らないため）
+  const seqFormat = targetSeq.getAttribute('format') || 'r1';
+  const fmt = doc.querySelector(`resources > format[id="${seqFormat}"]`) || doc.querySelector('resources > format');
   const frameDur = fmt ? fmt.getAttribute('frameDuration') : '100/6000s';
   let tb = 6000;
   const fm = /^(\d+)\/(\d+)s$/.exec(frameDur || '');
   if (fm) { tb = parseInt(fm[2],10); }
-  const seqFormat = fmt ? fmt.getAttribute('id') : 'r1';
 
   function parseTB(v) {
     if (v == null) return 0;
@@ -4437,22 +4456,6 @@ function convertMulticamTimeline(mcText, cuts, offsetSec) {
     if (m2) return Math.round(parseFloat(m2[1])*tb);
     return 0;
   }
-  const round = n => Math.round(n);
-  const mcEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-
-  // 1つのfcpxmlに複数のprojectが含まれる場合がある（例：ライブラリ全体を書き出した時の
-  // 「素材」プロジェクトなど）。mc-clipを持つspineを探して使う。
-  let spine = null;
-  doc.querySelectorAll('project > sequence').forEach(seq => {
-    if (spine) return;
-    const sp = seq.querySelector('spine');
-    if (sp && sp.querySelector(':scope > mc-clip')) spine = sp;
-  });
-  if (!spine) {
-    const seqCount = doc.querySelectorAll('project > sequence').length;
-    throw new Error(`マルチカムクリップを含むタイムラインが見つかりません（fcpxml内に${seqCount}個のプロジェクトがありますが、いずれもmc-clipを含んでいません）`);
-  }
-  const mcClips = spine.querySelectorAll(':scope > mc-clip');
 
   const segs = [];
   mcClips.forEach(mc => {
