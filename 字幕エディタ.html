@@ -2423,7 +2423,9 @@ function loadSRT(file) {
 document.body.addEventListener('dragover', ev => {
   ev.preventDefault();
   const dz = document.getElementById('dropzone');
-  dz.textContent = document.getElementById('mc-cut-modal').classList.contains('open')
+  const dzMcCutOpen = document.getElementById('mc-cut-modal').classList.contains('open');
+  const dzTitleExtractOpen = document.getElementById('title-extract-modal').style.display === 'flex';
+  dz.textContent = (dzMcCutOpen || dzTitleExtractOpen)
     ? 'fcpxml / .fcpxmldをドロップ'
     : 'SRTファイルをドロップ';
   dz.classList.add('active');
