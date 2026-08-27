@@ -2435,8 +2435,9 @@ document.body.addEventListener('drop', ev => {
   const items = [...(ev.dataTransfer.items || [])];
   const files = [...ev.dataTransfer.files];
 
-  // マルチカム無音カットのモーダルが開いている間は、①のfcpxmlへドロップを振り分ける
+  // 特定のモーダルが開いている間は、fcpxmlのドロップをそちらへ振り分ける
   const mcCutOpen = document.getElementById('mc-cut-modal').classList.contains('open');
+  const titleExtractOpen = document.getElementById('title-extract-modal').style.display === 'flex';
 
   // .fcpxmld パッケージ（ディレクトリ）を処理
   for (const item of items) {
@@ -2449,6 +2450,7 @@ document.body.addEventListener('drop', ev => {
           const reader = new FileReader();
           reader.onload = e2 => {
             if (mcCutOpen) { loadMcCutFcpxmlText(e2.target.result, entry.name); return; }
+            if (titleExtractOpen) { loadTitleExtractText(e2.target.result, entry.name); return; }
             try { remapEntriesWithFCPXML(e2.target.result); }
             catch(err) { showRemapResult(false, err.message); }
           };
@@ -2467,6 +2469,7 @@ document.body.addEventListener('drop', ev => {
       const reader = new FileReader();
       reader.onload = e2 => {
         if (mcCutOpen) { loadMcCutFcpxmlText(e2.target.result, f.name); return; }
+        if (titleExtractOpen) { loadTitleExtractText(e2.target.result, f.name); return; }
         try { remapEntriesWithFCPXML(e2.target.result); }
         catch(err) { showRemapResult(false, err.message); }
       };
