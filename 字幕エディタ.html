@@ -4468,7 +4468,7 @@ function extractTitlesFromFcpxml(xmlText) {
     return h > 0 ? `${p2(h)}:${p2(m)}:${p2(s)}` : `${p2(m)}:${p2(s)}`;
   }
 
-  const titleEls = Array.from(doc.querySelectorAll('title'));
+  const titleEls = Array.from(scope.querySelectorAll('title'));
   const results = [];
   titleEls.forEach(t => {
     const textEl = t.querySelector('text');
