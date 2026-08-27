@@ -4423,12 +4423,26 @@ function loadTitleExtractText(xmlText, displayName) {
   }
 }
 
-// fcpxmlの<title>要素をドキュメント順（≒時系列順）に抜き出す。
-// テロップは通常のspine直下クリップだけでなく、他クリップの上に重なる
-// 「接続クリップ（lane）」として置かれることも多いため、文書全体を対象にする。
+// fcpxmlの<title>要素を、実際に使われている本編のタイムライン（project > sequence）
+// だけを対象にドキュメント順（≒時系列順）に抜き出す。
+// fcpxmlにはresources内の複合クリップ・テンプレートも<sequence>を持っており、
+// それぞれ独自に0秒から始まる別のタイムラインになっている。これを含めてしまうと
+// 「途中でタイムコードが振り直される」ように見えてしまうため、対象外にする。
 function extractTitlesFromFcpxml(xmlText) {
   const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
   if (doc.querySelector('parsererror')) throw new Error('fcpxmlの解析に失敗しました');
+
+  // project直下のsequenceの中から、実際にタイトルが一番多く入っている
+  // ものを本編タイムラインとして採用する（複数projectが混ざっている場合の対策）
+  let mainSeq = null, mainCount = -1;
+  doc.querySelectorAll('project > sequence').forEach(seq => {
+    const c = seq.querySelectorAll('title').length;
+    if (c > mainCount) { mainCount = c; mainSeq = seq; }
+  });
+  const scope = mainSeq || doc;
+  if (!mainSeq) {
+    console.warn('project > sequence が見つからないため、文書全体からテロップを抽出します（タイムコードが正しくない可能性があります）');
+  }
 
   const fmt = doc.querySelector('resources > format');
   const frameDur = fmt ? fmt.getAttribute('frameDuration') : null;
