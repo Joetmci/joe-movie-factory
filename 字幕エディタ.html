@@ -4468,13 +4468,30 @@ function extractTitlesFromFcpxml(xmlText) {
     return h > 0 ? `${p2(h)}:${p2(m)}:${p2(s)}` : `${p2(m)}:${p2(s)}`;
   }
 
+  // 接続クリップ（laneを持つtitle等）は、offsetが「タイムライン全体の絶対時刻」ではなく
+  // 「直接の親要素の内部時間」で表されていることがある（マルチカムの内部クロックが
+  // 1時間(3600s)始まりになっている場合など）。<spine>に辿り着くまで祖先を遡り、
+  // 各階層で offset - start ぶんだけ補正して絶対時刻に変換する。
+  function computeAbsoluteOffset(el) {
+    let sec = parseFcpSeconds(el.getAttribute('offset'));
+    if (sec == null) return null;
+    let node = el.parentElement;
+    while (node && node.tagName !== 'spine' && node !== scope) {
+      const pOffset = parseFcpSeconds(node.getAttribute('offset'));
+      const pStart  = parseFcpSeconds(node.getAttribute('start')) || 0;
+      if (pOffset != null) sec = pOffset + (sec - pStart);
+      node = node.parentElement;
+    }
+    return sec;
+  }
+
   const titleEls = Array.from(scope.querySelectorAll('title'));
   const results = [];
   titleEls.forEach(t => {
     const textEl = t.querySelector('text');
     const text = textEl ? textEl.textContent.replace(/\s+/g, ' ').trim() : '';
     if (!text) return;
-    const offsetSec = parseFcpSeconds(t.getAttribute('offset'));
+    const offsetSec = computeAbsoluteOffset(t);
     results.push({ text, timeLabel: secToLabel(offsetSec) });
   });
   return results;
