@@ -4209,7 +4209,7 @@ function switchMcCutSource(v) {
 
 function updateMcCutBuiltinStatus() {
   const el = document.getElementById('mc-cut-builtin-status');
-  if (!wvAudioBuffer) {
+  if (!currentVideoFile) {
     el.textContent = '動画または音声が未選択です（🎥/🎵 選択 → 🔍 無音を検出）';
   } else if (!mcCutKeepRegions.length) {
     el.textContent = '読み込み済みです。「🔍 無音を検出」を押してください';
@@ -4217,6 +4217,45 @@ function updateMcCutBuiltinStatus() {
     el.textContent = `✅ ${mcCutKeepRegions.length}クリップ（下のリストで個別に編集できます）`;
   }
   updateMcCutRunState();
+}
+
+// マルチカム無音カットの無音検出は、サーバー側（低メモリ・高速）で行う。
+// ブラウザ内でdecodeAudioDataすると、長時間の音声（数時間）で数GB単位の
+// メモリを使いタブがクラッシュすることがあるため。
+async function runMcCutSilenceDetect() {
+  if (!currentVideoFile) { toast('動画または音声を先に選択してください', 'err'); return; }
+  const statusEl = document.getElementById('mc-cut-builtin-status');
+  const thresholdDb   = document.getElementById('sil-threshold').value;
+  const minSilenceMs  = document.getElementById('sil-minlen').value;
+  const paddingMs     = document.getElementById('sil-padding').value;
+  statusEl.textContent = '🔄 サーバーで無音を解析中…（数十秒かかることがあります）';
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${HELPER_URL}/detect-silence`);
+      xhr.setRequestHeader('X-Filename', encodeURIComponent(currentVideoFile.name));
+      xhr.setRequestHeader('X-Threshold-Db', thresholdDb);
+      xhr.setRequestHeader('X-Min-Silence-Ms', minSilenceMs);
+      xhr.setRequestHeader('X-Padding-Ms', paddingMs);
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText)); }
+          catch (e) { reject(new Error('サーバー応答の解析に失敗しました')); }
+        } else {
+          reject(new Error(xhr.responseText || `HTTP ${xhr.status}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error('AIサーバーに接続できませんでした'));
+      xhr.send(currentVideoFile);
+    });
+    silenceRegions = result.silence || [];
+    speechRegions = result.speech || [];
+    toast(`無音 ${silenceRegions.length}箇所を検出`, silenceRegions.length ? 'ok' : 'info');
+  } catch (e) {
+    console.error(e);
+    toast('無音検出に失敗しました: ' + e.message, 'err');
+  }
+  syncMcCutKeepRegions();
 }
 
 // フィラー語（単語一致のみ。誤検出を避けるため文脈中の一部一致は対象外）
