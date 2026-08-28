@@ -4352,31 +4352,21 @@ function removeMcCutKeepRegion(i) {
   updateMcCutBuiltinStatus();
 }
 
-async function handleMcCutAudio(input) {
+function handleMcCutAudio(input) {
   const file = input.files[0];
   input.value = '';
   if (!file) return;
-  const statusEl = document.getElementById('mc-cut-builtin-status');
-  statusEl.textContent = '音声を解析中…';
-  try {
-    const ab = await file.arrayBuffer();
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const audioBuffer = await audioCtx.decodeAudioData(ab);
-    audioCtx.close();
-    wvAudioBuffer = audioBuffer;
-    currentVideoFile = file;   // 文字起こしはこの音声ファイルをそのままアップロードできる
-    video.src = URL.createObjectURL(file);   // 再生しながらのテロップ編集に使えるように
-    document.getElementById('video-panel').classList.remove('hidden');
-    document.getElementById('btn-transcribe').style.display = '';
-    silenceRegions = [];
-    speechRegions = [];
-    mcCutKeepRegions = [];
-    renderMcCutKeepList();
-    toast('音声を読み込みました。「🔍 無音を検出」を押してください', 'ok');
-  } catch (e) {
-    console.error(e);
-    toast('音声の読み込みに失敗しました: ' + e.message, 'err');
-  }
+  // 無音検出はサーバー側で行うため、ここではブラウザ内でのデコードはしない
+  // （長時間の音声をdecodeAudioDataするとタブがクラッシュすることがあるため）
+  currentVideoFile = file;   // 文字起こし・無音検出はこの音声ファイルをそのままアップロードできる
+  video.src = URL.createObjectURL(file);   // 再生しながらのテロップ編集に使えるように
+  document.getElementById('video-panel').classList.remove('hidden');
+  document.getElementById('btn-transcribe').style.display = '';
+  silenceRegions = [];
+  speechRegions = [];
+  mcCutKeepRegions = [];
+  renderMcCutKeepList();
+  toast('音声を読み込みました。「🔍 無音を検出」を押してください', 'ok');
   updateMcCutBuiltinStatus();
 }
 
