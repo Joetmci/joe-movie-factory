@@ -1119,6 +1119,43 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   </div>
 </div>
 
+<!-- YouTubeライブチャット -->
+<div class="modal-overlay" id="youtube-chat-modal" style="display:none;">
+  <div class="modal" style="width:520px;max-height:88vh;display:flex;flex-direction:column;overflow-y:auto;">
+    <h2>💬 YouTubeライブチャット</h2>
+
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;">① スーパーチャットをSRT化</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;">
+      ライブ配信のスーパーチャット（投げ銭コメント）を、動画のタイムコードに合わせたSRT字幕として直接読み込みます。
+    </div>
+    <div class="field">
+      <label>YouTubeのURL</label>
+      <input type="text" id="yt-chat-url" placeholder="https://youtube.com/live/...">
+    </div>
+    <div class="field">
+      <label>Chromeプロフィール名（非公開・限定公開の場合のみ）</label>
+      <input type="text" id="yt-chat-profile" placeholder="例: Profile 2（Chrome右上のアイコンで確認できます）">
+    </div>
+    <div id="yt-chat-status" style="font-size:12px;color:var(--text2);margin-bottom:14px;"></div>
+    <div class="actions" style="margin-top:0;margin-bottom:22px;">
+      <button class="btn btn-accent2" style="width:100%;" onclick="runYoutubeChatSrt()" id="btn-yt-chat-run">📥 変換して字幕として読み込む</button>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;">② チャットパネル動画を作る（フル版）</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+        アバター・色付きの吹き出しで、通常コメントも含めて本物のチャットUIに近い見た目の動画を作ることもできます（動画の横に並べて使うイメージ）。<br><br>
+        こちらは<strong style="color:var(--text);">Playwright</strong>というブラウザ自動操作ツールと、Chromiumブラウザ本体（100MB超）が必要になるため、このアプリには組み込んでいません。<br><br>
+        <strong style="color:var(--text);">Claude Codeでこのアプリのフォルダを開いて、「YouTubeチャットパネルを作って」とURLを添えてお願いしてください。</strong>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-secondary" onclick="closeYoutubeChatModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- Setup Modal -->
 <div class="modal-overlay" id="setup-modal">
   <div class="modal" style="width:480px">
