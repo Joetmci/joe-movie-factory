@@ -4578,6 +4578,66 @@ function copyTitleExtractOutput() {
   );
 }
 
+// ════════════════════════════════════════════
+//  YouTubeライブチャット（スーパーチャットのSRT化）
+// ════════════════════════════════════════════
+function openYoutubeChatModal()  { document.getElementById('youtube-chat-modal').style.display = 'flex'; }
+function closeYoutubeChatModal() { document.getElementById('youtube-chat-modal').style.display = 'none'; }
+
+// SRTのテキスト内容を直接entriesにセットする（loadSRTのファイル版と同じ処理）
+function loadSRTText(text, name) {
+  filename = (name || 'YouTubeチャット').replace(/\.srt$/i, '');
+  entries = parseSRT(text).map(e => ({ ...e, text: applyLearnedCorrections(applyDict(e.text)) }));
+  nextId = entries.length;
+  selectedIds.clear(); activeId = null; playingId = null;
+  render();
+  markClean();
+}
+
+async function runYoutubeChatSrt() {
+  const url = document.getElementById('yt-chat-url').value.trim();
+  const profile = document.getElementById('yt-chat-profile').value.trim();
+  const statusEl = document.getElementById('yt-chat-status');
+  if (!url) { toast('YouTubeのURLを入力してください', 'err'); return; }
+
+  const btn = document.getElementById('btn-yt-chat-run');
+  btn.disabled = true;
+  statusEl.textContent = '🔄 チャットを取得中…（数十秒かかることがあります）';
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${HELPER_URL}/youtube-chat-srt`);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText)); }
+          catch (e) { reject(new Error('サーバー応答の解析に失敗しました')); }
+        } else {
+          try { reject(new Error(JSON.parse(xhr.responseText).error || `HTTP ${xhr.status}`)); }
+          catch (e) { reject(new Error(`HTTP ${xhr.status}`)); }
+        }
+      };
+      xhr.onerror = () => reject(new Error('AIサーバーに接続できませんでした'));
+      xhr.send(JSON.stringify({ url, profile }));
+    });
+
+    if (!result.count) {
+      statusEl.textContent = 'スーパーチャットが見つかりませんでした';
+      toast('スーパーチャットが見つかりませんでした', 'info');
+    } else {
+      loadSRTText(result.srt, 'YouTubeチャット');
+      statusEl.textContent = `✅ ${result.count}件を字幕として読み込みました`;
+      toast(`${result.count}件のスーパーチャットを字幕として読み込みました`, 'ok');
+      closeYoutubeChatModal();
+    }
+  } catch (e) {
+    console.error(e);
+    statusEl.textContent = '❌ ' + e.message;
+    toast('取得に失敗しました: ' + e.message, 'err');
+  }
+  btn.disabled = false;
+}
+
 // ①のfcpxmlを、テキスト内容から直接セットする（ファイル選択・ドラッグ＆ドロップ共通）
 function loadMcCutFcpxmlText(xmlText, displayName) {
   mcCutFcpxmlText = xmlText;
