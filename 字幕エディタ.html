@@ -1057,7 +1057,7 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
           <button class="btn btn-secondary btn-sm" style="flex:1" onclick="document.getElementById('video-input').click()">🎥 動画を選択</button>
           <button class="btn btn-secondary btn-sm" style="flex:1" onclick="document.getElementById('mc-cut-audio-input').click()" title="WAV/AIFF/M4Aなど。書き出しが速く軽い">🎵 音声のみ</button>
         </div>
-        <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="runSilenceDetect();syncMcCutKeepRegions();">🔍 無音を検出</button>
+        <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="runMcCutSilenceDetect()">🔍 無音を検出</button>
         <div style="font-size:10px;color:var(--text3);margin:6px 0;">左サイドバーの「無音の基準」などのスライダーがそのまま使われます</div>
         <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);margin-bottom:8px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;" title="文字起こし済みのSRTエントリの中から「あ」「えー」「あのー」等、フィラー語だけのものを検出してkeep区間から除外します">
           <input type="checkbox" id="mc-cut-filler" style="width:auto;" onchange="syncMcCutKeepRegions()"> 🗣️ フィラー語・咳払いも除外する（あ・えーっと・咳等）
