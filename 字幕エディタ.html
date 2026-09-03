@@ -111,6 +111,23 @@ body {
 .btn-lg { padding: 12px 26px; font-size: 15px; font-weight: 700; border-radius: 10px; gap: 8px; }
 .btn-sm { padding: 8px 16px; font-size: 13px; }
 .btn-xs { padding: 6px 12px; font-size: 12px; border-radius: 7px; }
+.btn-card {
+  flex-direction: column; align-items: flex-start; justify-content: center;
+  gap: 1px; padding: 6px 14px; text-align: left;
+}
+.btn-card .bc-title { font-size: 12px; font-weight: 700; letter-spacing: 0; }
+.btn-card .bc-desc { font-size: 10px; font-weight: 500; opacity: 0.72; letter-spacing: 0; }
+.tool-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  width: 100%; padding: 8px 10px; border-radius: 8px;
+  background: transparent; border: 1px solid transparent; color: var(--text);
+  cursor: pointer; text-align: left; font-family: inherit;
+}
+.tool-item:hover { background: var(--surface2); border-color: var(--border); }
+.tool-item .ti-title { font-size: 12px; font-weight: 700; }
+.tool-item .ti-desc { font-size: 10.5px; font-weight: 500; color: var(--text2); line-height: 1.4; }
+.tool-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.tool-item:disabled:hover { background: transparent; border-color: transparent; }
 .btn-play {
   width: 46px; height: 46px; border-radius: 50%; padding: 0;
   font-size: 18px; flex-shrink: 0;
