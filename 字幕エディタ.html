@@ -978,31 +978,49 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   <span class="hint" id="footer-hint">字幕ファイルを読み込んでください</span>
   <div class="right">
     <!-- SRT -->
-    <div style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:5px 8px 5px 5px;">
-      <span style="font-size:11px;color:var(--text2);font-weight:700;letter-spacing:.04em;padding:0 6px;border-right:1px solid var(--border);margin-right:2px;">SRT</span>
-      <button class="btn btn-secondary btn-sm" id="btn-export-srt" onclick="exportSRT()" disabled>📄 SRT 書き出し</button>
-    </div>
+    <button class="btn btn-secondary btn-sm btn-card" id="btn-export-srt" onclick="exportSRT()" disabled title="テキストと時間だけのシンプルな字幕ファイル">
+      <span class="bc-title">📄 SRTで書き出す</span>
+      <span class="bc-desc">Vrewや他の編集ソフト用</span>
+    </button>
     <!-- FCPXML -->
-    <div style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid rgba(155,107,242,0.3);border-radius:11px;padding:5px 8px 5px 5px;">
-      <span style="font-size:11px;color:var(--accent2);font-weight:700;letter-spacing:.04em;padding:0 6px;border-right:1px solid rgba(155,107,242,0.3);margin-right:2px;">FCPXML</span>
-      <button class="btn btn-accent2 btn-sm" id="btn-export-fcpx" onclick="openFcpxModal()" disabled title="字幕キャプション（テロップ以外）">💬 キャプション</button>
-      <button class="btn btn-accent2 btn-sm" id="btn-export-titles" onclick="exportTitlesXML()" disabled title="スタイル付きタイトルクリップ">🎨 タイトル</button>
-    </div>
+    <button class="btn btn-accent2 btn-sm btn-card" id="btn-export-fcpx" onclick="openFcpxModal()" disabled title="文字だけのシンプルな字幕（装飾なし）">
+      <span class="bc-title">💬 字幕として書き出す</span>
+      <span class="bc-desc">FCPX用・文字だけのシンプル版</span>
+    </button>
+    <button class="btn btn-accent2 btn-sm btn-card" id="btn-export-titles" onclick="exportTitlesXML()" disabled title="フォント・色・位置を指定できるテロップ">
+      <span class="bc-title">🎨 テロップとして書き出す</span>
+      <span class="bc-desc">FCPX用・フォントや色を指定</span>
+    </button>
     <!-- Vrew -->
-    <div style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:5px 8px 5px 5px;">
-      <span style="font-size:11px;color:var(--success);font-weight:700;letter-spacing:.04em;padding:0 6px;border-right:1px solid var(--border);margin-right:2px;">Vrew</span>
-      <button class="btn btn-success btn-sm" id="btn-export-vrew" onclick="exportVrew()" disabled>📤 Vrew 書き出し</button>
-    </div>
+    <button class="btn btn-success btn-sm btn-card" id="btn-export-vrew" onclick="exportVrew()" disabled title="Vrewアプリで開けるSRTファイル">
+      <span class="bc-title">📤 Vrewで書き出す</span>
+      <span class="bc-desc">Vrewアプリ用SRT</span>
+    </button>
     <!-- ツール（スタイル・タイムライン合わせ・無音カット変換・テロップ抽出・YouTubeチャット） -->
     <div style="position:relative;">
-      <button class="btn btn-ghost btn-sm" id="btn-tools-menu" onclick="toggleToolsMenu()" title="スタイル設定・タイムライン合わせ・無音カット変換・テロップ抽出・YouTubeチャット">🛠 ツール ▾</button>
-      <div id="tools-menu-panel" style="display:none;position:absolute;bottom:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px;width:260px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:500;">
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <button class="btn btn-ghost btn-sm" onclick="openTitleStyleModal()" title="タイトルスタイル設定（フォント・色・位置）" style="width:100%;justify-content:flex-start;">⚙ タイトルスタイル設定</button>
-          <button class="btn btn-ghost btn-sm" id="btn-fcp-remap" onclick="document.getElementById('fcpxml-remap-input').click()" disabled title="FCPのプロジェクトXMLを読み込んでSRTのタイムコードを自動調整" style="width:100%;justify-content:flex-start;">🔄 タイムライン合わせ</button>
-          <button class="btn btn-ghost btn-sm" id="btn-mc-cut" onclick="openMcCutModal()" title="タイムラインfcpxmlと無音判定jsonから、クリップ構成を保ったまま無音カット済みfcpxmlを書き出します（マルチカム・通常どちらも対応）" style="width:100%;justify-content:flex-start;">🎞️ 無音カット変換</button>
-          <button class="btn btn-ghost btn-sm" id="btn-title-extract" onclick="openTitleExtractModal()" title="FCPXで作ったタイトル（テロップ）クリップの文字をfcpxmlから抜き出して、コピーできるテキストにします" style="width:100%;justify-content:flex-start;">📝 テロップ抽出</button>
-          <button class="btn btn-ghost btn-sm" id="btn-youtube-chat" onclick="openYoutubeChatModal()" title="YouTubeライブ配信のスーパーチャットをSRT化／チャットパネル動画の作り方" style="width:100%;justify-content:flex-start;">💬 YouTubeチャット</button>
+      <button class="btn btn-ghost btn-sm" id="btn-tools-menu" onclick="toggleToolsMenu()" title="その他のツール">🛠 その他のツール ▾</button>
+      <div id="tools-menu-panel" style="display:none;position:absolute;bottom:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:500;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <button class="tool-item" onclick="openTitleStyleModal()">
+            <span class="ti-title">⚙ テロップのデザイン設定</span>
+            <span class="ti-desc">フォント・文字色・位置をまとめて設定</span>
+          </button>
+          <button class="tool-item" id="btn-fcp-remap" onclick="document.getElementById('fcpxml-remap-input').click()" disabled>
+            <span class="ti-title">🔄 FCPXの編集に字幕を合わせ直す</span>
+            <span class="ti-desc">カット編集後のFCPXMLを読み込んで、ズレた字幕タイミングを自動調整</span>
+          </button>
+          <button class="tool-item" id="btn-mc-cut" onclick="openMcCutModal()">
+            <span class="ti-title">🎞️ 無音部分を自動カット</span>
+            <span class="ti-desc">動画の無音区間を検出して、カット済みのFCPXMLを作成</span>
+          </button>
+          <button class="tool-item" id="btn-title-extract" onclick="openTitleExtractModal()">
+            <span class="ti-title">📝 テロップの文字だけ取り出す</span>
+            <span class="ti-desc">FCPXで作ったテロップの文字をまとめてコピーできる形にする</span>
+          </button>
+          <button class="tool-item" id="btn-youtube-chat" onclick="openYoutubeChatModal()">
+            <span class="ti-title">💬 スパチャをテロップ化</span>
+            <span class="ti-desc">YouTubeライブのスーパーチャットをSRTにする</span>
+          </button>
         </div>
       </div>
     </div>
