@@ -3076,6 +3076,19 @@ document.addEventListener('click', e => {
   }
 });
 
+// ── ツールメニュー（フッター） ────────────────────────────
+function toggleToolsMenu() {
+  const panel = document.getElementById('tools-menu-panel');
+  panel.style.display = panel.style.display !== 'none' ? 'none' : 'block';
+}
+document.addEventListener('click', e => {
+  const panel = document.getElementById('tools-menu-panel');
+  const btn = document.getElementById('btn-tools-menu');
+  if (panel && panel.style.display !== 'none' && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
 // ── モデル切り替え ───────────────────────────────────────
 async function changeModel(model) {
   localStorage.setItem('whisper_model', model);
