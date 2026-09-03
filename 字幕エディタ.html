@@ -3000,16 +3000,15 @@ function splitAllByLength() {
 // ════════════════════════════════════════════
 const HELPER_URL = 'http://localhost:5001';
 
-// ── APIキー管理 ──────────────────────────────────────────
-function toggleApiKeyPanel() {
-  const panel = document.getElementById('apikey-panel');
+// ── 設定パネル（文字起こし設定 + APIキー）─────────────────
+function toggleSettingsPanel() {
+  const panel = document.getElementById('settings-panel');
   const isOpen = panel.style.display !== 'none';
   panel.style.display = isOpen ? 'none' : 'block';
   if (!isOpen) {
     const key = localStorage.getItem('openai_api_key') || '';
     document.getElementById('apikey-input').value = key;
     _updateApiKeyStatus();
-    document.getElementById('apikey-input').focus();
   }
 }
 
@@ -3018,41 +3017,37 @@ function saveApiKey() {
   if (key) {
     localStorage.setItem('openai_api_key', key);
     _updateApiKeyStatus();
-    document.getElementById('btn-apikey').textContent = '🔑';
-    document.getElementById('btn-apikey').style.color = 'var(--success)';
     toast('APIキーを保存しました', 'ok');
   }
-  document.getElementById('apikey-panel').style.display = 'none';
 }
 
 function clearApiKey() {
   localStorage.removeItem('openai_api_key');
   document.getElementById('apikey-input').value = '';
   _updateApiKeyStatus();
-  document.getElementById('btn-apikey').style.color = '';
   toast('APIキーを削除しました', 'info');
-  document.getElementById('apikey-panel').style.display = 'none';
 }
 
 function _updateApiKeyStatus() {
   const key = localStorage.getItem('openai_api_key') || '';
   const el = document.getElementById('apikey-status');
+  const btn = document.getElementById('btn-settings');
   if (key) {
     el.style.color = 'var(--success)';
     el.textContent = '✓ APIキー設定済み — OpenAI Whisper APIを使用';
-    document.getElementById('btn-apikey').style.color = 'var(--success)';
+    if (btn) btn.style.color = 'var(--success)';
   } else {
     el.style.color = 'var(--text2)';
     el.textContent = '未設定 — ローカルWhisperを使用';
-    document.getElementById('btn-apikey').style.color = '';
+    if (btn) btn.style.color = '';
   }
 }
 
 // パネル外クリックで閉じる
 document.addEventListener('click', e => {
-  const panel = document.getElementById('apikey-panel');
-  const btn = document.getElementById('btn-apikey');
-  if (panel && !panel.contains(e.target) && e.target !== btn) {
+  const panel = document.getElementById('settings-panel');
+  const btn = document.getElementById('btn-settings');
+  if (panel && panel.style.display !== 'none' && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
     panel.style.display = 'none';
   }
 });
