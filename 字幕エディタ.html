@@ -766,22 +766,26 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
 
   <div class="sep-v" style="height:24px;"></div>
 
-  <!-- 分割グループ -->
-  <div class="toolbar-group">
-    <span class="toolbar-group-label">📐 一括分割</span>
-    <label style="font-size:12px;color:var(--text2);">最大</label>
-    <input type="number" id="maxlen-val" value="13" min="4" max="80" style="width:50px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:6px 7px;font-size:12px;outline:none;" title="この文字数を超えたら自動改行">
-    <span style="font-size:12px;color:var(--text3);">字</span>
-    <button class="btn btn-warn btn-xs" onclick="splitAllByLength()" id="btn-split-all" disabled title="全字幕を指定文字数で一括分割">実行</button>
-  </div>
-
-  <!-- クリーンアップグループ -->
-  <div class="toolbar-group">
-    <span class="toolbar-group-label">🧹 クリーンアップ</span>
-    <button class="btn btn-secondary btn-xs" onclick="openFindReplace()" id="btn-findreplace" disabled title="誤変換を検索して一括置換（Cmd+H）">🔍 一括置換</button>
-    <button class="btn btn-secondary btn-xs" onclick="removeHallucinationsAll()" id="btn-rm-hallu" disabled title="無音区間でWhisperが繰り返す幻覚テキストを除去">繰り返し除去</button>
-    <button class="btn btn-secondary btn-xs" onclick="mergeFragmentsAll()" id="btn-merge-frags" disabled title="途中で切れたセグメントを自動結合">途切れ結合</button>
-    <button class="btn btn-secondary btn-xs" onclick="clearAllSpeakers()" id="btn-clear-speakers" disabled title="全字幕から話者ラベルをまとめて削除">👤 話者クリア</button>
+  <!-- 一括処理（一括分割＋クリーンアップをまとめる） -->
+  <div style="position:relative;">
+    <button class="btn btn-secondary btn-xs" id="btn-bulk-menu" onclick="toggleBulkMenu()" title="一括分割・クリーンアップ">🧰 一括処理 ▾</button>
+    <div id="bulk-menu-panel" style="display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:500;">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">📐 一括分割</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">
+        <label style="font-size:12px;color:var(--text2);">最大</label>
+        <input type="number" id="maxlen-val" value="13" min="4" max="80" style="width:50px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:6px 7px;font-size:12px;outline:none;" title="この文字数を超えたら自動改行">
+        <span style="font-size:12px;color:var(--text3);">字</span>
+        <button class="btn btn-warn btn-xs" onclick="splitAllByLength()" id="btn-split-all" disabled title="全字幕を指定文字数で一括分割" style="margin-left:auto;">実行</button>
+      </div>
+      <div style="height:1px;background:var(--border);margin-bottom:14px;"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">🧹 クリーンアップ</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <button class="btn btn-secondary btn-xs" onclick="openFindReplace()" id="btn-findreplace" disabled title="誤変換を検索して一括置換（Cmd+H）" style="width:100%;justify-content:flex-start;">🔍 一括置換</button>
+        <button class="btn btn-secondary btn-xs" onclick="removeHallucinationsAll()" id="btn-rm-hallu" disabled title="無音区間でWhisperが繰り返す幻覚テキストを除去" style="width:100%;justify-content:flex-start;">繰り返し除去</button>
+        <button class="btn btn-secondary btn-xs" onclick="mergeFragmentsAll()" id="btn-merge-frags" disabled title="途中で切れたセグメントを自動結合" style="width:100%;justify-content:flex-start;">途切れ結合</button>
+        <button class="btn btn-secondary btn-xs" onclick="clearAllSpeakers()" id="btn-clear-speakers" disabled title="全字幕から話者ラベルをまとめて削除" style="width:100%;justify-content:flex-start;">👤 話者クリア</button>
+      </div>
+    </div>
   </div>
 
   <!-- 右端オプション -->
