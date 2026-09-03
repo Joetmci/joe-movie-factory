@@ -970,20 +970,24 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
       <span style="font-size:11px;color:var(--accent2);font-weight:700;letter-spacing:.04em;padding:0 6px;border-right:1px solid rgba(155,107,242,0.3);margin-right:2px;">FCPXML</span>
       <button class="btn btn-accent2 btn-sm" id="btn-export-fcpx" onclick="openFcpxModal()" disabled title="字幕キャプション（テロップ以外）">💬 キャプション</button>
       <button class="btn btn-accent2 btn-sm" id="btn-export-titles" onclick="exportTitlesXML()" disabled title="スタイル付きタイトルクリップ">🎨 タイトル</button>
-      <button class="btn btn-ghost btn-sm" onclick="openTitleStyleModal()" title="タイトルスタイル設定（フォント・色・位置）" style="padding:7px 10px;">⚙ スタイル</button>
-      <div style="width:1px;height:20px;background:rgba(155,107,242,0.3);margin:0 2px;"></div>
-      <button class="btn btn-accent2 btn-sm" id="btn-fcp-remap" onclick="document.getElementById('fcpxml-remap-input').click()" disabled title="FCPのプロジェクトXMLを読み込んでSRTのタイムコードを自動調整">🔄 タイムライン合わせ</button>
-      <div style="width:1px;height:20px;background:rgba(155,107,242,0.3);margin:0 2px;"></div>
-      <button class="btn btn-accent2 btn-sm" id="btn-mc-cut" onclick="openMcCutModal()" title="タイムラインfcpxmlと無音判定jsonから、クリップ構成を保ったまま無音カット済みfcpxmlを書き出します（マルチカム・通常どちらも対応）">🎞️ 無音カット変換</button>
-      <div style="width:1px;height:20px;background:rgba(155,107,242,0.3);margin:0 2px;"></div>
-      <button class="btn btn-accent2 btn-sm" id="btn-title-extract" onclick="openTitleExtractModal()" title="FCPXで作ったタイトル（テロップ）クリップの文字をfcpxmlから抜き出して、コピーできるテキストにします">📝 テロップ抽出</button>
-      <div style="width:1px;height:20px;background:rgba(155,107,242,0.3);margin:0 2px;"></div>
-      <button class="btn btn-accent2 btn-sm" id="btn-youtube-chat" onclick="openYoutubeChatModal()" title="YouTubeライブ配信のスーパーチャットをSRT化／チャットパネル動画の作り方">💬 YouTubeチャット</button>
     </div>
     <!-- Vrew -->
     <div style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:5px 8px 5px 5px;">
       <span style="font-size:11px;color:var(--success);font-weight:700;letter-spacing:.04em;padding:0 6px;border-right:1px solid var(--border);margin-right:2px;">Vrew</span>
       <button class="btn btn-success btn-sm" id="btn-export-vrew" onclick="exportVrew()" disabled>📤 Vrew 書き出し</button>
+    </div>
+    <!-- ツール（スタイル・タイムライン合わせ・無音カット変換・テロップ抽出・YouTubeチャット） -->
+    <div style="position:relative;">
+      <button class="btn btn-ghost btn-sm" id="btn-tools-menu" onclick="toggleToolsMenu()" title="スタイル設定・タイムライン合わせ・無音カット変換・テロップ抽出・YouTubeチャット">🛠 ツール ▾</button>
+      <div id="tools-menu-panel" style="display:none;position:absolute;bottom:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px;width:260px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:500;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <button class="btn btn-ghost btn-sm" onclick="openTitleStyleModal()" title="タイトルスタイル設定（フォント・色・位置）" style="width:100%;justify-content:flex-start;">⚙ タイトルスタイル設定</button>
+          <button class="btn btn-ghost btn-sm" id="btn-fcp-remap" onclick="document.getElementById('fcpxml-remap-input').click()" disabled title="FCPのプロジェクトXMLを読み込んでSRTのタイムコードを自動調整" style="width:100%;justify-content:flex-start;">🔄 タイムライン合わせ</button>
+          <button class="btn btn-ghost btn-sm" id="btn-mc-cut" onclick="openMcCutModal()" title="タイムラインfcpxmlと無音判定jsonから、クリップ構成を保ったまま無音カット済みfcpxmlを書き出します（マルチカム・通常どちらも対応）" style="width:100%;justify-content:flex-start;">🎞️ 無音カット変換</button>
+          <button class="btn btn-ghost btn-sm" id="btn-title-extract" onclick="openTitleExtractModal()" title="FCPXで作ったタイトル（テロップ）クリップの文字をfcpxmlから抜き出して、コピーできるテキストにします" style="width:100%;justify-content:flex-start;">📝 テロップ抽出</button>
+          <button class="btn btn-ghost btn-sm" id="btn-youtube-chat" onclick="openYoutubeChatModal()" title="YouTubeライブ配信のスーパーチャットをSRT化／チャットパネル動画の作り方" style="width:100%;justify-content:flex-start;">💬 YouTubeチャット</button>
+        </div>
+      </div>
     </div>
   </div>
 </footer>
