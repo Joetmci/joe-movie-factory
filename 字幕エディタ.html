@@ -665,50 +665,52 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
       <span id="transcribe-pct" style="font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;min-width:34px;text-align:right;">0%</span>
     </div>
 
-    <!-- オプション（モデル・精度・話者分離） -->
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-      <select id="model-select" onchange="changeModel(this.value)"
-        style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 9px;font-size:12px;outline:none;cursor:pointer;font-weight:600;">
-        <option value="tiny">tiny（速い）</option>
-        <option value="base">base</option>
-        <option value="small">small</option>
-        <option value="medium">medium</option>
-        <option value="large">large</option>
-        <option value="large-v2">large-v2</option>
-        <option value="large-v3">large-v3（最高品質・低速）</option>
-        <option value="large-v3-turbo" selected>large-v3-turbo（推奨：速い＋高品質）</option>
-      </select>
+    <!-- 設定（モデル・精度・話者分離・辞書・APIキー をまとめる） -->
+    <div style="position:relative;">
+      <button class="btn btn-ghost btn-sm" id="btn-settings" onclick="toggleSettingsPanel()" title="文字起こしモデル・精度・話者分離・辞書・APIキー">⚙️ 設定</button>
+      <div id="settings-panel" style="display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:500;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">文字起こし設定</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <select id="model-select" onchange="changeModel(this.value)"
+            style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 9px;font-size:12px;outline:none;cursor:pointer;font-weight:600;">
+            <option value="tiny">tiny（速い）</option>
+            <option value="base">base</option>
+            <option value="small">small</option>
+            <option value="medium">medium</option>
+            <option value="large">large</option>
+            <option value="large-v2">large-v2</option>
+            <option value="large-v3">large-v3（最高品質・低速）</option>
+            <option value="large-v3-turbo" selected>large-v3-turbo（推奨：速い＋高品質）</option>
+          </select>
 
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;white-space:nowrap;font-weight:500;" title="ピッチ解析で話者を自動検出します（男性/女性、または話者A/B）。処理時間が若干増えます">
-        <input type="checkbox" id="chk-speaker" checked style="accent-color:var(--accent2);cursor:pointer;width:14px;height:14px;" onchange="saveSpeakerPref(this.checked)">
-        👥 話者分離
-      </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-weight:500;" title="ピッチ解析で話者を自動検出します（男性/女性、または話者A/B）。処理時間が若干増えます">
+            <input type="checkbox" id="chk-speaker" checked style="accent-color:var(--accent2);cursor:pointer;width:14px;height:14px;" onchange="saveSpeakerPref(this.checked)">
+            👥 話者分離
+          </label>
 
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;white-space:nowrap;font-weight:500;" title="beam_size=10・best_of=5で精度を最大化します。処理時間が約2倍になります">
-        <input type="checkbox" id="chk-hq" checked style="accent-color:var(--accent);cursor:pointer;width:14px;height:14px;">
-        🎯 高精度
-      </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-weight:500;" title="beam_size=10・best_of=5で精度を最大化します。処理時間が約2倍になります">
+            <input type="checkbox" id="chk-hq" checked style="accent-color:var(--accent);cursor:pointer;width:14px;height:14px;">
+            🎯 高精度
+          </label>
 
-      <button class="btn btn-ghost btn-sm" id="btn-vocab" onclick="openDictModal()" title="辞書・語彙登録・自動学習を管理">
-        📖 辞書<span id="learned-badge" style="color:var(--success);font-size:11px;"></span>
-      </button>
+          <button class="btn btn-ghost btn-sm" id="btn-vocab" onclick="openDictModal()" title="辞書・語彙登録・自動学習を管理" style="width:100%;justify-content:center;">
+            📖 辞書<span id="learned-badge" style="color:var(--success);font-size:11px;"></span>
+          </button>
+        </div>
+
+        <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">OpenAI APIキー</div>
+        <input id="apikey-input" type="password" placeholder="sk-..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13px;font-family:'SF Mono',monospace;outline:none;margin-bottom:10px;">
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="saveApiKey()">保存</button>
+          <button class="btn btn-danger btn-sm" onclick="clearApiKey()">削除</button>
+        </div>
+        <div id="apikey-status" style="font-size:12px;margin-top:8px;color:var(--text2);"></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.7;">設定するとOpenAI Whisper APIで文字起こし<br>未設定はローカルWhisperを使用</div>
+      </div>
     </div>
   </div><!-- /AI文字起こしグループ end -->
-
-  <!-- APIキー -->
-  <div style="position:relative;">
-    <button class="btn btn-ghost btn-sm" id="btn-apikey" onclick="toggleApiKeyPanel()" title="OpenAI APIキー設定">🔑 APIキー</button>
-    <div id="apikey-panel" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:500;">
-      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">OpenAI APIキー</div>
-      <input id="apikey-input" type="password" placeholder="sk-..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13px;font-family:'SF Mono',monospace;outline:none;margin-bottom:10px;">
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary btn-sm" style="flex:1" onclick="saveApiKey()">保存</button>
-        <button class="btn btn-danger btn-sm" onclick="clearApiKey()">削除</button>
-      </div>
-      <div id="apikey-status" style="font-size:12px;margin-top:8px;color:var(--text2);"></div>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.7;">設定するとOpenAI Whisper APIで文字起こし<br>未設定はローカルWhisperを使用</div>
-    </div>
-  </div>
 
   <div class="spacer"></div>
   <div class="stat-chip">字幕 <span id="stat-count">0</span> 件</div>
