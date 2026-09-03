@@ -2567,9 +2567,9 @@ function exportFCPXML() {
   const captions = entries.map(e => {
     const sMs = timeToMs(e.start), dur = Math.max(1, timeToMs(e.end)-sMs);
     const safe = e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    return `            <caption lane="1" offset="${fcpTime(sMs)}" duration="${fcpTime(dur)}" role="${role}">\n              <text>${safe}</text>\n            </caption>`;
+    return `              <caption lane="1" offset="${fcpTime(sMs)}" start="${fcpTime(sMs)}" duration="${fcpTime(dur)}" role="${role}">\n                <text>${safe}</text>\n              </caption>`;
   }).join('\n');
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n<fcpxml version="1.11">\n  <resources>\n    <format id="r1" frameDuration="${fps.fd}" name="${fps.name}" width="${width}" height="${height}"/>\n  </resources>\n  <library>\n    <event name="${eventName}">\n      <project name="${eventName}">\n        <sequence format="r1" duration="${fcpTime(lastEnd)}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">\n          <spine>\n${captions}\n          </spine>\n        </sequence>\n      </project>\n    </event>\n  </library>\n</fcpxml>`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n<fcpxml version="1.11">\n  <resources>\n    <format id="r1" frameDuration="${fps.fd}" name="${fps.name}" width="${width}" height="${height}"/>\n  </resources>\n  <library>\n    <event name="${eventName}">\n      <project name="${eventName}">\n        <sequence format="r1" duration="${fcpTime(lastEnd)}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">\n          <spine>\n            <gap name="ギャップ" offset="0s" duration="${fcpTime(lastEnd)}" start="0s">\n${captions}\n            </gap>\n          </spine>\n        </sequence>\n      </project>\n    </event>\n  </library>\n</fcpxml>`;
   download(xml, `${filename}_captions.fcpxml`, 'application/xml');
   toast('FCPXMLをエクスポートしました', 'ok');
 }
