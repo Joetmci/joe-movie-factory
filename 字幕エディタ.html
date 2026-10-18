@@ -407,6 +407,12 @@ header .spacer { flex: 1; }
   border-radius: 12px; font-size: 12px; color: var(--text); white-space: nowrap;
   user-select: none;
 }
+.wchip { position: relative; transition: transform .08s ease, background .08s ease, box-shadow .08s ease; }
+.wchip.done { background: rgba(50,215,75,0.22); border-color: rgba(50,215,75,0.55); color: var(--text); }
+.wchip.now {
+  background: var(--active); border-color: var(--active); color: #1a0d00; font-weight: 800;
+  transform: scale(1.4); z-index: 2; box-shadow: 0 0 12px rgba(255,159,10,0.9);
+}
 .wchip-split {
   width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
   background: transparent; border: 1.5px dashed rgba(255,159,10,0.3);
@@ -470,6 +476,37 @@ header .spacer { flex: 1; }
 #empty h2 { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
 #empty p { font-size: 12px; text-align: center; line-height: 1.7; max-width: 260px; color: var(--text2); }
 #empty.show { display: flex; }
+
+/* ── ホーム画面 / 動画のみ状態 ── */
+#empty { padding: 28px 20px; overflow-y: auto; justify-content: flex-start; }
+#home-cards { width: 100%; max-width: 760px; margin: auto; display: flex; flex-direction: column; gap: 10px; }
+.home-title { font-size: 24px; font-weight: 800; color: var(--text); text-align: center; margin: 4px 0 10px; letter-spacing: -0.01em; }
+.home-section { font-size: 12px; font-weight: 700; color: var(--text2); margin-top: 14px; letter-spacing: .04em; }
+.home-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.home-card {
+  display: grid; grid-template-columns: 52px 1fr; grid-template-areas: "icon title" "icon desc";
+  column-gap: 14px; row-gap: 3px; align-items: center; text-align: left;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 18px 18px; cursor: pointer; color: var(--text); font-family: inherit;
+  transition: border-color .15s, background .15s, transform .15s;
+}
+.home-card:hover { background: var(--surface2); border-color: var(--accent); transform: translateY(-1px); }
+.home-card .hc-icon { grid-area: icon; font-size: 34px; text-align: center; }
+.home-card .hc-title { grid-area: title; font-size: 16px; font-weight: 700; }
+.home-card .hc-desc { grid-area: desc; font-size: 12px; color: var(--text2); line-height: 1.55; }
+.home-card-main { border-color: var(--accent); background: rgba(10,132,255,0.10); grid-column: 1 / -1; }
+.home-card-purple { border-color: rgba(155,107,242,0.35); }
+.home-card-purple:hover { border-color: var(--accent2); }
+.home-drop-hint { margin-top: 18px; text-align: center; font-size: 12px; color: var(--text3); }
+#video-hint { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: auto; text-align: center; max-width: 360px; }
+#video-hint .vh-icon { font-size: 52px; }
+#video-hint .vh-title { font-size: 20px; font-weight: 800; color: var(--text); }
+#video-hint .vh-desc { font-size: 13px; color: var(--text2); line-height: 1.7; }
+#video-hint .vh-sub { font-size: 11px; color: var(--text3); }
+body.home-mode #video-hint { display: none; }
+body:not(.home-mode) #home-cards { display: none; }
+body.no-entries .toolbar, body.no-entries footer { display: none; }
+body.home-mode .hdr-open { display: none !important; }
 
 #dropzone {
   display: none; position: fixed; inset: 0;
@@ -656,7 +693,7 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   <input type="file" id="mc-cut-audio-input" accept="audio/*,.wav,.aif,.aiff,.m4a,.caf" style="display:none" onchange="handleMcCutAudio(this)">
 
   <!-- 動画を開く -->
-  <button class="btn btn-secondary" id="btn-load-video" onclick="document.getElementById('video-input').click()" style="font-size:14px;padding:9px 20px;">
+  <button class="btn btn-secondary hdr-open" id="btn-load-video" onclick="document.getElementById('video-input').click()" style="font-size:14px;padding:9px 20px;">
     🎥 動画を開く
   </button>
 
@@ -723,6 +760,10 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
           <button class="btn btn-primary btn-sm" style="flex:1" onclick="saveApiKey()">保存</button>
           <button class="btn btn-danger btn-sm" onclick="clearApiKey()">削除</button>
         </div>
+        <select id="api-model" onchange="localStorage.setItem('openai_api_model', this.value)" style="width:100%;margin-top:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 9px;font-size:12px;outline:none;cursor:pointer;font-weight:600;">
+          <option value="whisper-1">whisper-1（標準・辞書が使える）</option>
+          <option value="gpt-4o-transcribe-diarize">gpt-4o-transcribe-diarize（新しい・話者付き）</option>
+        </select>
         <div id="apikey-status" style="font-size:12px;margin-top:8px;color:var(--text2);"></div>
         <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.7;">設定するとOpenAI Whisper APIで文字起こし<br>未設定はローカルWhisperを使用</div>
       </div>
@@ -730,11 +771,11 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   </div><!-- /AI文字起こしグループ end -->
 
   <div class="spacer"></div>
-  <div class="stat-chip">字幕 <span id="stat-count">0</span> 件</div>
+  <div class="stat-chip hdr-open">字幕 <span id="stat-count">0</span> 件</div>
   <div class="stat-chip" id="stat-dur" style="display:none">尺 <span id="stat-time">--</span></div>
 
   <!-- SRTを開く -->
-  <button class="btn btn-primary" onclick="document.getElementById('srt-input').click()" style="font-size:14px;padding:9px 20px;">
+  <button class="btn btn-primary hdr-open" onclick="document.getElementById('srt-input').click()" style="font-size:14px;padding:9px 20px;">
     📂 SRT を開く
   </button>
 </header>
@@ -934,40 +975,58 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   <div class="list-panel">
     <div class="list-area" id="list-area">
       <div id="empty" class="show">
-        <div class="icon" style="font-size:52px;width:88px;height:88px;border-radius:22px;">🎬</div>
-        <h2 style="font-size:22px;margin-bottom:8px;">Joe Movie Factory</h2>
-        <p style="margin-bottom:32px;font-size:14px;">動画をAIで自動文字起こし → 字幕編集 → FCPXML書き出し</p>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:680px;margin:0 auto 32px;">
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 12px;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" onclick="document.getElementById('video-input').click()">
-            <div style="font-size:32px;margin-bottom:10px;">🎥</div>
-            <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.07em;margin-bottom:6px;">STEP 1</div>
-            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">動画を開く</div>
-            <div style="font-size:11px;color:var(--text2);line-height:1.6;">MP4・MOV・MKV など<br>クリックして選択</div>
+        <!-- ホーム：やりたいことを選ぶ -->
+        <div id="home-cards">
+          <h1 class="home-title">何をしますか？</h1>
+          <div class="home-section">字幕・テロップを作る</div>
+          <div class="home-row">
+            <button class="home-card home-card-main" onclick="document.getElementById('video-input').click()">
+              <span class="hc-icon">🎥</span>
+              <span class="hc-title">動画から字幕を作る</span>
+              <span class="hc-desc">動画を選ぶと、AIが話した内容を自動で文字にします</span>
+            </button>
+            <button class="home-card" onclick="document.getElementById('srt-input').click()">
+              <span class="hc-icon">📂</span>
+              <span class="hc-title">字幕ファイル(SRT)を直す</span>
+              <span class="hc-desc">作成済みのSRTを読み込んで、文字やタイミングを編集します</span>
+            </button>
+            <button class="home-card" onclick="openVrewModal()">
+              <span class="hc-icon">🅥</span>
+              <span class="hc-title">Vrewで文字起こしして取り込む</span>
+              <span class="hc-desc">Vrewを起動し、書き出したSRTをそのまま取り込みます</span>
+            </button>
           </div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 12px;text-align:center;">
-            <div style="font-size:32px;margin-bottom:10px;">🎤</div>
-            <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.07em;margin-bottom:6px;">STEP 2</div>
-            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">文字起こし</div>
-            <div style="font-size:11px;color:var(--text2);line-height:1.6;">AIが自動で字幕を生成<br>高精度・話者分離に対応</div>
+          <div class="home-section">Final Cut Pro の編集を助ける</div>
+          <div class="home-row">
+            <button class="home-card home-card-purple" onclick="openMcCutModal()">
+              <span class="hc-icon">✂️</span>
+              <span class="hc-title">無音部分を自動カット</span>
+              <span class="hc-desc">FCPXMLを読み込んで、無音をカットした新しいFCPXMLを作ります</span>
+            </button>
+            <button class="home-card home-card-purple" onclick="openTitleExtractModal()">
+              <span class="hc-icon">📝</span>
+              <span class="hc-title">テロップの文字を取り出す</span>
+              <span class="hc-desc">FCPXで作ったテロップを、文章としてコピーできます</span>
+            </button>
           </div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 12px;text-align:center;">
-            <div style="font-size:32px;margin-bottom:10px;">✏️</div>
-            <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.07em;margin-bottom:6px;">STEP 3</div>
-            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">字幕を編集</div>
-            <div style="font-size:11px;color:var(--text2);line-height:1.6;">テキストを直接編集<br>タイミングも手動調整</div>
+          <div class="home-section">YouTube</div>
+          <div class="home-row">
+            <button class="home-card home-card-purple" onclick="openYoutubeChatModal()">
+              <span class="hc-icon">💬</span>
+              <span class="hc-title">スパチャをテロップにする</span>
+              <span class="hc-desc">ライブ配信のスーパーチャットを字幕ファイルにします</span>
+            </button>
           </div>
-          <div style="background:var(--surface);border:1px solid rgba(155,107,242,0.4);border-radius:14px;padding:20px 12px;text-align:center;">
-            <div style="font-size:32px;margin-bottom:10px;">📤</div>
-            <div style="font-size:11px;font-weight:800;color:var(--accent2);letter-spacing:.07em;margin-bottom:6px;">STEP 4</div>
-            <div style="font-size:14px;font-weight:700;margin-bottom:6px;">書き出し</div>
-            <div style="font-size:11px;color:var(--text2);line-height:1.6;">FCPXML / SRT / Vrew<br>フッターのボタンから</div>
-          </div>
+          <div class="home-drop-hint">動画・SRTファイルは、ここにドラッグ＆ドロップしても開けます</div>
         </div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
-          <button class="btn btn-secondary" style="font-size:15px;padding:12px 28px;" onclick="document.getElementById('video-input').click()">🎥 動画を開く</button>
-          <button class="btn btn-primary" style="font-size:15px;padding:12px 28px;" onclick="document.getElementById('srt-input').click()">📂 SRT を開く</button>
+        <!-- 動画だけ読み込んだ状態 -->
+        <div id="video-hint">
+          <div class="vh-icon">🎤</div>
+          <div class="vh-title">次は「文字起こし」</div>
+          <div class="vh-desc">AIが動画の話し声を自動で字幕にします。<br>終わるとここに字幕が並びます。</div>
+          <button class="btn btn-warn btn-lg" onclick="startTranscribe()">🎤 文字起こしを始める</button>
+          <div class="vh-sub">設定を変えたいときは、上の「⚙️ 文字起こし設定」から</div>
         </div>
-        <div style="margin-top:20px;font-size:12px;color:var(--text3);">SRT・動画ファイルをここにドラッグ＆ドロップでも開けます</div>
       </div>
     </div>
   </div>
@@ -1161,6 +1220,24 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
     <div class="actions">
       <button class="btn btn-secondary" onclick="closeTitleExtractModal()">閉じる</button>
       <button class="btn btn-accent2" onclick="copyTitleExtractOutput()">📋 コピー</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vrew連携 -->
+<div class="modal-overlay" id="vrew-modal" style="display:none;">
+  <div class="modal" style="width:520px;max-height:88vh;display:flex;flex-direction:column;overflow-y:auto;">
+    <h2>🅥 Vrewで文字起こしして取り込む</h2>
+    <div style="font-size:13px;font-weight:700;margin-bottom:4px;">① Vrewで文字起こし</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:10px;">Vrewを開き、動画を読み込んで文字起こしします。終わったら、字幕をSRTファイルで書き出してください（保存先はデスクトップかダウンロードにすると見つけやすいです）。</div>
+    <button class="btn btn-secondary btn-sm" style="align-self:flex-start;margin-bottom:18px;" onclick="launchVrew()">🅥 Vrewを起動する</button>
+    <div style="font-size:13px;font-weight:700;margin-bottom:4px;">② 書き出したSRTを取り込む</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:10px;">デスクトップ・ダウンロード・書類・ムービーの中から、最近書き出されたSRTを探します。</div>
+    <button class="btn btn-primary btn-sm" style="align-self:flex-start;margin-bottom:10px;" onclick="scanVrewSrt()">🔍 書き出したSRTを探す</button>
+    <div id="vrew-status" style="font-size:12px;color:var(--text2);margin-bottom:8px;"></div>
+    <div id="vrew-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <div class="actions">
+      <button class="btn btn-secondary" onclick="closeVrewModal()">閉じる</button>
     </div>
   </div>
 </div>
@@ -1490,26 +1567,6 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
 </div>
 
 <!-- 起動時クイックスタート -->
-<div class="modal-overlay" id="quickstart-modal" style="display:none;">
-  <div class="modal" style="max-width:520px;text-align:center;padding:36px 32px;position:relative;">
-    <button onclick="closeQuickStartModal()" title="閉じる" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;line-height:1;padding:4px;">✕</button>
-    <h2 style="font-size:19px;font-weight:700;color:var(--text);margin-bottom:6px;">何をしますか？</h2>
-    <p style="font-size:12px;color:var(--text2);margin-bottom:26px;">やりたいことを選んでください</p>
-    <div style="display:flex;gap:14px;">
-      <div onclick="quickStartTelop()" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 16px;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:36px;margin-bottom:12px;">💬</div>
-        <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text);">テロップ編集</div>
-        <div style="font-size:11px;color:var(--text2);line-height:1.6;">動画を読み込んで<br>字幕・テロップを作る</div>
-      </div>
-      <div onclick="quickStartSilence()" style="flex:1;background:var(--surface);border:1px solid rgba(155,107,242,0.35);border-radius:14px;padding:26px 16px;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='rgba(155,107,242,0.35)'">
-        <div style="font-size:36px;margin-bottom:12px;">✂️</div>
-        <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text);">無音編集</div>
-        <div style="font-size:11px;color:var(--text2);line-height:1.6;">無音部分をカットして<br>FCPXMLを書き出す</div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- カット検出 進捗モーダル -->
 <div class="modal-overlay" id="cut-progress-modal" style="display:none; align-items:center; justify-content:center; z-index:9000;">
   <div class="modal" style="width:340px;text-align:center;padding:32px 28px;">
@@ -1672,10 +1729,6 @@ function dismissRestore() {
   clearVideoFromIDB();
 }
 
-function showQuickStartModal()  { document.getElementById('quickstart-modal').style.display = 'flex'; }
-function closeQuickStartModal() { document.getElementById('quickstart-modal').style.display = 'none'; }
-function quickStartTelop()   { closeQuickStartModal(); document.getElementById('video-input').click(); }
-function quickStartSilence() { closeQuickStartModal(); openMcCutModal(); }
 
 window.addEventListener('beforeunload', ev => {
   if (entries.length && JSON.stringify(entries) !== _cleanState) {
@@ -1685,6 +1738,7 @@ window.addEventListener('beforeunload', ev => {
 });
 
 checkRestoreOnLoad();
+updateHomeMode();
 
 // ════════════════════════════════════════════
 //  SRT Parser
@@ -1906,12 +1960,10 @@ function render() {
       <div style="display:flex;flex-direction:column;gap:2px;padding-top:1px;">
         <button class="btn btn-danger" title="削除" style="padding:5px 8px;font-size:14px;line-height:1;" onclick="deleteEntry(${e.id})">✕</button>
       </div>`;
-    if (isActive) {
-      const chipBar = document.createElement('div');
-      chipBar.className = 'word-chip-bar';
-      chipBar.innerHTML = buildWordChipBarInner(e);
-      div.appendChild(chipBar);
-    }
+    const chipBar = document.createElement('div');
+    chipBar.className = 'word-chip-bar';
+    chipBar.innerHTML = buildWordChipBarInner(e);
+    div.appendChild(chipBar);
     frag.appendChild(div);
   }
 
@@ -1931,6 +1983,8 @@ function render() {
     computeEntryVolumes();
     drawWaveform();
     scheduleAutosave();
+    _chipEntryId = null;
+    updateChipHighlight();
   });
 }
 
@@ -2244,6 +2298,7 @@ document.getElementById('video-input').addEventListener('change', function(ev) {
 
 function loadVideo(f, { silent = false } = {}) {
   currentVideoFile = f;
+  updateHomeMode();
   _detectedCuts = [];   // 新しい動画なのでカット検出キャッシュをクリア
   video.src = URL.createObjectURL(f);
   document.getElementById('video-panel').classList.remove('hidden');
@@ -2287,6 +2342,37 @@ video.addEventListener('seeking', drawWaveform);
 
 const seekBar = document.getElementById('seek-bar');
 seekBar.addEventListener('input', () => { video.currentTime = seekBar.value / 1000; });
+
+let _chipEntryId = null;
+function updateChipHighlight() {
+  const tms = video.currentTime * 1000;
+  const e = entries.find(x => timeToMs(x.start) <= tms && tms < timeToMs(x.end)) || null;
+  if (_chipEntryId !== null && (!e || e.id !== _chipEntryId)) {
+    const old = document.querySelector(`.entry[data-id="${_chipEntryId}"] .word-chip-bar`);
+    if (old) old.querySelectorAll('.wchip.now,.wchip.done').forEach(c => c.classList.remove('now', 'done'));
+    _chipEntryId = null;
+  }
+  if (!e) return;
+  const bar = document.querySelector(`.entry[data-id="${e.id}"] .word-chip-bar`);
+  if (!bar) return;
+  const words = _getWordsForEntry(e);
+  if (bar.querySelectorAll('.wchip').length !== words.length) bar.innerHTML = buildWordChipBarInner(e);
+  const chips = bar.querySelectorAll('.wchip');
+  let cur = -1;
+  const t = video.currentTime;
+  for (let i = 0; i < words.length; i++) { if (words[i].start <= t) cur = i; else break; }
+  chips.forEach((c, i) => {
+    c.classList.toggle('done', i < cur);
+    c.classList.toggle('now', i === cur);
+  });
+  _chipEntryId = e.id;
+}
+function _chipLoop() {
+  updateChipHighlight();
+  if (!video.paused && !video.ended) requestAnimationFrame(_chipLoop);
+}
+video.addEventListener('play', () => requestAnimationFrame(_chipLoop));
+['pause', 'seeked', 'timeupdate'].forEach(ev => video.addEventListener(ev, updateChipHighlight));
 
 function onTimeUpdate() {
   const t = video.currentTime;
@@ -2466,7 +2552,14 @@ function splitAtCursor() {
 function updateButtons() {
   document.getElementById('btn-merge').disabled = selectedIds.size < 2;
 }
+function updateHomeMode() {
+  let hasVideo = false;
+  try { hasVideo = !!currentVideoFile; } catch (e) {}
+  document.body.classList.toggle('no-entries', entries.length === 0);
+  document.body.classList.toggle('home-mode', entries.length === 0 && !hasVideo);
+}
 function updateStats() {
+  updateHomeMode();
   const n = entries.length;
   document.getElementById('stat-count').textContent = n;
   if (n > 0) {
@@ -3052,17 +3145,24 @@ function toggleSettingsPanel() {
   if (!isOpen) {
     const key = localStorage.getItem('openai_api_key') || '';
     document.getElementById('apikey-input').value = key;
+    document.getElementById('api-model').value = localStorage.getItem('openai_api_model') || 'whisper-1';
     _updateApiKeyStatus();
   }
 }
 
+function isValidApiKey(key) { return /^sk-[\x21-\x7e]{20,}$/.test(key); }
+
 function saveApiKey() {
-  const key = document.getElementById('apikey-input').value.trim();
-  if (key) {
-    localStorage.setItem('openai_api_key', key);
-    _updateApiKeyStatus();
-    toast('APIキーを保存しました', 'ok');
+  const key = document.getElementById('apikey-input').value.replace(/[\s\u200b-\u200d\ufeff]/g, '');
+  if (!key) return;
+  if (!isValidApiKey(key)) {
+    toast('APIキーの形式が正しくありません。「sk-」で始まる半角英数字の文字列を、OpenAIの画面でコピーし直してください', 'err');
+    return;
   }
+  localStorage.setItem('openai_api_key', key);
+  document.getElementById('apikey-input').value = key;
+  _updateApiKeyStatus();
+  toast('APIキーを保存しました', 'ok');
 }
 
 function clearApiKey() {
@@ -3076,9 +3176,13 @@ function _updateApiKeyStatus() {
   const key = localStorage.getItem('openai_api_key') || '';
   const el = document.getElementById('apikey-status');
   const btn = document.getElementById('btn-settings');
-  if (key) {
+  if (key && !isValidApiKey(key)) {
+    el.style.color = 'var(--danger)';
+    el.textContent = '✕ 保存されているキーの形式が正しくありません。削除して、入れ直してください';
+    if (btn) btn.style.color = 'var(--danger)';
+  } else if (key) {
     el.style.color = 'var(--success)';
-    el.textContent = '✓ APIキー設定済み — OpenAI Whisper APIを使用';
+    el.textContent = '✓ APIキー設定済み — OpenAI APIを使用';
     if (btn) btn.style.color = 'var(--success)';
   } else {
     el.style.color = 'var(--text2)';
@@ -3098,6 +3202,37 @@ document.addEventListener('click', e => {
 
 // 起動時にキー状態を反映
 _updateApiKeyStatus();
+
+// ── Vrew連携 ─────────────────────────────────────────────
+function openVrewModal()  { document.getElementById('vrew-modal').style.display = 'flex'; }
+function closeVrewModal() { document.getElementById('vrew-modal').style.display = 'none'; }
+async function launchVrew() {
+  const st = document.getElementById('vrew-status');
+  try {
+    const r = await fetch(`${HELPER_URL}/open-vrew`, { method: 'POST' });
+    const j = await r.json();
+    st.textContent = j.ok ? 'Vrewを起動しました。文字起こしとSRT書き出しをしてください。' : 'Vrewを起動できませんでした（/Applications にVrewがあるか確認してください）';
+  } catch (e) { st.textContent = 'AIサーバーに接続できません。アプリを起動し直してください。'; }
+}
+async function scanVrewSrt() {
+  const st = document.getElementById('vrew-status'), list = document.getElementById('vrew-list');
+  list.innerHTML = ''; st.textContent = '探しています…';
+  try {
+    const r = await fetch(`${HELPER_URL}/recent-srt?minutes=180`);
+    const { items } = await r.json();
+    if (!items.length) { st.textContent = '直近3時間に書き出されたSRTが見つかりませんでした。Vrewで書き出したあと、もう一度押してください。'; return; }
+    st.textContent = `${items.length}件見つかりました。取り込むファイルを選んでください（新しい順）`;
+    items.forEach(it => {
+      const b = document.createElement('button');
+      b.className = 'btn btn-secondary btn-sm';
+      b.style.cssText = 'justify-content:flex-start;text-align:left;';
+      const t = new Date(it.mtime * 1000);
+      b.textContent = `📄 ${it.name}　${it.dir}　${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')}`;
+      b.onclick = () => { loadSRTText(it.text, it.name); closeVrewModal(); };
+      list.appendChild(b);
+    });
+  } catch (e) { st.textContent = 'AIサーバーに接続できません。アプリを起動し直してください。'; }
+}
 
 // ── 一括処理メニュー ──────────────────────────────────────
 function toggleBulkMenu() {
@@ -3545,8 +3680,6 @@ function splashDismiss() {
     el.style.display = 'none';
     // スプラッシュが消えたら復元モーダルを表示
     showRestoreModal();
-    // 復元するデータがなければクイックスタートを表示
-    if (!_pendingRestore) showQuickStartModal();
   }, 520);
 }
 
@@ -3732,7 +3865,11 @@ async function doTranscribe() {
   const audioDurSec = (vid && vid.duration && isFinite(vid.duration)) ? vid.duration : 300;
 
   try {
-    const apiKey = localStorage.getItem('openai_api_key') || '';
+    let apiKey = localStorage.getItem('openai_api_key') || '';
+    if (apiKey && !isValidApiKey(apiKey)) {
+      toast('保存されているAPIキーの形式が正しくないため、PC内のWhisperで文字起こしします。「⚙️ 文字起こし設定」でキーを入れ直してください', 'err');
+      apiKey = '';
+    }
     const vocab  = localStorage.getItem('whisper_vocab') || '';
     const sizeMB = (currentVideoFile.size / 1024 / 1024).toFixed(1);
 
@@ -3745,6 +3882,7 @@ async function doTranscribe() {
       xhr.setRequestHeader('X-Language', 'ja');
       xhr.setRequestHeader('X-Filename', encodeURIComponent(currentVideoFile.name));
       if (apiKey) xhr.setRequestHeader('X-OpenAI-Key', apiKey);
+      if (apiKey) xhr.setRequestHeader('X-OpenAI-Model', localStorage.getItem('openai_api_model') || 'whisper-1');
       if (vocab)  xhr.setRequestHeader('X-Prompt', encodeURIComponent(vocab));
       if (document.getElementById('chk-speaker')?.checked) xhr.setRequestHeader('X-Speaker-Detect', 'true');
       if (document.getElementById('chk-hq')?.checked)     xhr.setRequestHeader('X-High-Quality', 'true');
@@ -3760,9 +3898,9 @@ async function doTranscribe() {
       xhr.upload.onload = () => {
         // ── フェーズ2: Whisper処理 (30→95%) ──────────
         setTranscribeProgress(30);
-        const mode = apiKey ? 'OpenAI API' : 'ローカル Whisper';
-        // large-v3は概ね2〜3倍実時間。保守的に2.5倍で推定
-        const estimatedSec = audioDurSec * 2.5;
+        const mode = apiKey ? 'OpenAI API ＋ 文字ごとの時間合わせ' : 'ローカル Whisper';
+        // ローカル: large-v3は概ね2〜3倍実時間。API: 文字起こしは速く、時間合わせが実時間の約0.3倍
+        const estimatedSec = apiKey ? audioDurSec * 0.5 : audioDurSec * 2.5;
         setTranscribeStatus(`文字起こし中… (${mode})`);
         startProgressEstimate(30, 95, estimatedSec);
       };
@@ -4465,6 +4603,7 @@ function handleMcCutAudio(input) {
   // 無音検出はサーバー側で行うため、ここではブラウザ内でのデコードはしない
   // （長時間の音声をdecodeAudioDataするとタブがクラッシュすることがあるため）
   currentVideoFile = file;   // 文字起こし・無音検出はこの音声ファイルをそのままアップロードできる
+  updateHomeMode();
   video.src = URL.createObjectURL(file);   // 再生しながらのテロップ編集に使えるように
   document.getElementById('video-panel').classList.remove('hidden');
   document.getElementById('btn-transcribe').style.display = '';
