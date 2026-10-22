@@ -8200,7 +8200,7 @@ function tlbarInit() {
         if (trim.mode === 'blade') {                                           // ブレードの位置を動かす（スナップつき）
           let nt = Math.max(0.05, Math.min(TL.duration - 0.05, trim.o0 + dx));
           const sn = tlSnapNear(nt, null, trim.o0); tlSnapGuide = sn ? sn.t : null; if (sn) nt = sn.t;
-          blades[trim.i] = Math.round(nt * 100) / 100; video.currentTime = blades[trim.i];
+          blades[trim.i] = Math.round(nt * 100) / 100; video.currentTime = blades[trim.i]; tlScrub();
           const M2 = _tlMerged(); tlTrimInfo = { side: 'end', ex: ((_tlO2E(blades[trim.i], M2) - tlView.start) / tlView.span) * r.width, posE: _tlO2E(blades[trim.i], M2), delta: blades[trim.i] - trim.o0, blade: true };
           tlbarDraw(); return;
         }
