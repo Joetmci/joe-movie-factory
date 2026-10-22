@@ -8210,7 +8210,7 @@ function tlbarInit() {
           const a = tlSnapNear(ns, c), b = tlSnapNear(ns + len, c);
           const pick = a && (!b || a.d <= b.d) ? { s: a.t, g: a.t } : b ? { s: b.t - len, g: b.t } : null; tlSnapGuide = pick ? pick.g : null; if (pick) ns = Math.max(0, Math.min(TL.duration - len, pick.s));
           c.start = Math.round(ns * 100) / 100; c.end = Math.round((ns + len) * 100) / 100;
-          video.currentTime = Math.min(TL.duration, c.start);
+          video.currentTime = Math.min(TL.duration, c.start); tlScrub();
           const M2 = _tlMerged(); tlTrimInfo = { side: 'start', ex: ((_tlO2E(c.start, M2) - tlView.start) / tlView.span) * r.width, posE: _tlO2E(c.start, M2), delta: c.start - trim.o0, roll: true };
           tlbarDraw(); return;
         }
