@@ -4550,9 +4550,112 @@ function tlSeek(v) {
   video.dispatchEvent(new Event('seeked'));
   video.dispatchEvent(new Event('timeupdate'));
 }
-// スキミング：止まっているときにタイムラインを引っ張ったら、その位置の音を、少しだけ鳴らす（FCPXと同じように、音を聞きながら位置を探せる）
-let _tlScrubTimer = null, _tlScrubLast = 0;
+// スキミング：止まっているときにタイムラインを引っ張ったら、その位置の音を鳴らす（FCPXと同じように、音を聞きながら位置を探せる）
+// タイムラインの音声を8秒ずつ読み込んでおき、白線の位置から短い音の粒（0.08秒）を、0.04秒ごとに重ねて鳴らす。
+// 動かす速さ・向き（戻すと逆向き）に合わせて途切れずに聞こえ、声の高さは変わらない。クリック・←→のコマ送りでは、その位置から0.12秒だけ鳴らす
+const SCR = { tok: null, ok: false, sr: 16000, total: 0, CH: 16000 * 8, chunks: new Map(), loading: new Map(), ctx: null, out: null, timer: null, next: 0, moved: 0, pos: null, dir: 1, blip: null, live: new Set() };
+const SCR_G = 0.08, SCR_HOP = 0.04;
+async function tlScrubPrepare(tok) {
+  if (!tok || SCR.tok === tok) return;
+  SCR.tok = tok; SCR.ok = false; SCR.chunks.clear(); SCR.loading.clear();
+  try {
+    const r = await fetch(`${HELPER_URL}/timeline-pcm?tok=${encodeURIComponent(tok)}&from=0&n=0`);
+    if (!r.ok || SCR.tok !== tok) return;                 // 古いAIサーバーのときは、今までのやり方（動画の音を少し再生）で鳴らす
+    SCR.sr = +r.headers.get('X-Sample-Rate') || 16000; SCR.total = +r.headers.get('X-Total-Samples') || 0;
+    SCR.CH = SCR.sr * 8; SCR.ok = SCR.total > 0;
+    if (TL) _scrNear(tlNow());
+  } catch (e) {}
+}
+function _scrLoad(c) {
+  if (c < 0 || c * SCR.CH >= SCR.total || SCR.chunks.has(c)) return Promise.resolve();
+  if (SCR.loading.has(c)) return SCR.loading.get(c);
+  const tok = SCR.tok;
+  const p = fetch(`${HELPER_URL}/timeline-pcm?tok=${encodeURIComponent(tok)}&from=${c * SCR.CH}&n=${SCR.CH}`)
+    .then(r => r.ok ? r.arrayBuffer() : null).then(b => {
+      if (!b || SCR.tok !== tok) return;
+      SCR.chunks.set(c, new Int16Array(b));
+      if (SCR.chunks.size > 80) SCR.chunks.delete(SCR.chunks.keys().next().value);   // 古いものから捨てる（約10分ぶんだけ持つ）
+    }).catch(() => {}).finally(() => SCR.loading.delete(c));
+  SCR.loading.set(c, p); return p;
+}
+function _scrNear(t) { const c = Math.floor(t * SCR.sr / SCR.CH); return Promise.all([_scrLoad(c - 1), _scrLoad(c), _scrLoad(c + 1)]); }
+// t（元の時間）から、dir の向きに len 秒ぶんの音を読む。カットした所は飛ばし（バーの見え方と同じ）、ギャップは無音
+function _scrFill(t, len, dir) {
+  const sr = SCR.sr, n = Math.round(len * sr), out = new Float32Array(n), M = _tlMerged(), e0 = _tlO2E(t, M);
+  for (let k = 0; k < n; k += 16) {
+    const o = _tlE2O(Math.max(0, e0 + dir * k / sr), M);
+    if (o >= TL.duration || _tlInGap(o)) continue;
+    for (let j = k, i = Math.round(o * sr); j < Math.min(n, k + 16) && i >= 0; j++, i += dir) {
+      const c = Math.floor(i / SCR.CH), a = SCR.chunks.get(c);
+      if (!a) { _scrLoad(c); continue; }
+      out[j] = (a[i - c * SCR.CH] || 0) / 32768;
+    }
+  }
+  return out;
+}
+function _scrCtx() {
+  if (!SCR.ctx) {
+    try { SCR.ctx = new (window.AudioContext || window.webkitAudioContext)(); SCR.out = SCR.ctx.createGain(); SCR.out.connect(SCR.ctx.destination); }
+    catch (e) { SCR.ctx = null; return null; }
+  }
+  if (SCR.ctx.state === 'suspended') SCR.ctx.resume().catch(() => {});
+  return SCR.ctx;
+}
+function _scrPlay(data, when) {
+  const ctx = SCR.ctx, b = ctx.createBuffer(1, data.length, SCR.sr); b.copyToChannel(data, 0);
+  const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = b; s.connect(g); g.connect(SCR.out); s.start(when);
+  s._g = g; SCR.live.add(s); s.onended = () => { SCR.live.delete(s); g.disconnect(); };
+  return s;
+}
+function _scrFadeStop(s) {
+  if (!s) return;
+  try { const now = SCR.ctx.currentTime; s._g.gain.setTargetAtTime(0, now, 0.005); s.stop(now + 0.03); } catch (e) {}
+}
+function _scrTick() {
+  const ctx = SCR.ctx;
+  if (!TL || TL.playing || !ctx || performance.now() - SCR.moved > 150) { clearInterval(SCR.timer); SCR.timer = null; return; }   // 手を止めたら、音も止まる
+  while (SCR.next < ctx.currentTime + 0.06) {
+    const t = tlNow();
+    if (SCR.pos != null && Math.abs(t - SCR.pos) > 1e-4) SCR.dir = t < SCR.pos ? -1 : 1;
+    SCR.pos = t;
+    const d = _scrFill(t, SCR_G, SCR.dir), n = d.length;
+    for (let k = 0; k < n; k++) d[k] *= 0.5 - 0.5 * Math.cos(2 * Math.PI * k / n);     // 粒を重ねたとき、つなぎ目が平らになる窓
+    const at = Math.max(SCR.next, ctx.currentTime + 0.005);
+    _scrPlay(d, at); SCR.next = at + SCR_HOP;
+  }
+}
 function tlScrub() {
+  if (!TL || TL.playing) return;
+  if (!SCR.ok) return _tlScrubOld();
+  if (!_scrCtx()) return;
+  const t = tlNow();
+  _scrNear(t);
+  if (SCR.pos != null && Math.abs(t - SCR.pos) < 1e-4) return;       // 位置が変わっていない（上下に動かしただけ）
+  SCR.moved = performance.now();
+  if (SCR.blip) { _scrFadeStop(SCR.blip); SCR.blip = null; }
+  if (!SCR.timer) { SCR.next = 0; SCR.timer = setInterval(_scrTick, 15); _scrTick(); }
+}
+// クリック・コマ送り：その位置から、0.12秒だけ鳴らす
+async function tlScrubBlip() {
+  if (!TL || TL.playing) return;
+  if (!SCR.ok) return _tlScrubOld();
+  if (!_scrCtx()) return;
+  const t = tlNow(); SCR.pos = t;
+  await _scrNear(t);
+  if (!TL || TL.playing || SCR.timer || tlNow() !== t) return;        // 読み込みの間に動かしたら、そちらを優先
+  const d = _scrFill(t, 0.12, 1), n = d.length, fi = Math.round(0.004 * SCR.sr), fo = Math.round(0.03 * SCR.sr);
+  for (let k = 0; k < fi; k++) d[k] *= k / fi;
+  for (let k = 0; k < fo; k++) d[n - 1 - k] *= k / fo;
+  _scrFadeStop(SCR.blip);
+  SCR.blip = _scrPlay(d, SCR.ctx.currentTime + 0.003);
+}
+function tlScrubStop() {
+  clearInterval(SCR.timer); SCR.timer = null; SCR.blip = null;
+  SCR.live.forEach(s => _scrFadeStop(s));
+}
+// 古いAIサーバー（音声を少しずつ読めない）のときの鳴らし方：動画の音を、普通の速さで少しだけ再生する
+let _tlScrubTimer = null, _tlScrubLast = 0;
+function _tlScrubOld() {
   if (!TL || TL.playing || TL.idx < 0) return;
   const now = performance.now(); if (now - _tlScrubLast < 50) return; _tlScrubLast = now;
   const inner = TL.inner;
