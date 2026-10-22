@@ -8220,7 +8220,7 @@ function tlbarInit() {
         else c.end = Math.max(c.start, Math.min(TL.duration, cand));
         c.start = Math.round(c.start * 100) / 100; c.end = Math.round(c.end * 100) / 100;
         const d = (c.end - c.start) - (trim.o1 - trim.o0);
-        video.currentTime = Math.min(TL.duration, trim.edge === 'start' ? c.start : c.end);
+        video.currentTime = Math.min(TL.duration, trim.edge === 'start' ? c.start : c.end); tlScrub();
         const M2 = _tlMerged();
         tlTrimInfo = { side: trim.edge, ex: ((_tlO2E(c.start, M2) - tlView.start) / tlView.span) * r.width, posE: _tlO2E(c.start, M2), delta: -d };   // 戻した＝＋、縮めた（カットを増やした）＝−
         tlbarDraw(); return;
