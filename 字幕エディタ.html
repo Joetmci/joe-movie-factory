@@ -8693,7 +8693,7 @@ function convertMulticamTimeline(mcText, cuts, offsetSec, angleOv) {
       // oldStart: 元シーケンス上の位置を、検出に使った動画（＝SRTの時間軸）の秒数に戻したもの
       if (e <= s) return;
       // アングルを切り替えた所は、そこで断片を分ける
-      const ovs = (angleOv || []).map(o => ({ a: round((o.start + offsetSec) * tb), b: round((o.end + offsetSec) * tb), ai: o.ai }));
+      const ovs = (angleOv || []).map(o => ({ a: snap((o.start + offsetSec) * tb), b: snap((o.end + offsetSec) * tb), ai: o.ai }));
       const pts = [s, e]; ovs.forEach(o => { if (o.a > s && o.a < e) pts.push(o.a); if (o.b > s && o.b < e) pts.push(o.b); });
       pts.sort((x, y) => x - y);
       for (let i = 0; i < pts.length - 1; i++) {
