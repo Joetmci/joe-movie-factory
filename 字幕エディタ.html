@@ -4666,7 +4666,7 @@ function _tlScrubOld() {
 }
 function tlPlay() {
   if (!TL || TL.playing) return;
-  clearTimeout(_tlScrubTimer);
+  clearTimeout(_tlScrubTimer); tlScrubStop();
   if (TL.t >= TL.duration - 0.05) TL.t = 0;
   TL.baseT = TL.t; TL.baseNow = performance.now(); TL.playing = true;
   tlSel = null;                       // 再生を始めたら、選択は外す（うっかり削除を防ぐ）
