@@ -8039,7 +8039,7 @@ async function tlLoadWaveform() {
     const j = await r.json();
     if (!r.ok || j.error) throw new Error(j.error || `HTTP ${r.status}`);
     if (TL === mine) { TL.wave = j; tlbarDraw(); }
-  } catch (e) { console.warn('波形を作れませんでした', e); }
+  } catch (e) { console.warn('波形を作れませんでした', e); if (TL === mine) toast('波形を作れませんでした（' + e.message + '）。この画面のスクリーンショットを送ってください', 'err'); }
 }
 function tlClearBlades() { blades = []; tlSel = null; tlbarHint('ブレードを消しました'); tlbarDraw(); }
 function tlZoom(f, anchor) {
