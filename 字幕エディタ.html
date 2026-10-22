@@ -4549,8 +4549,20 @@ function tlSeek(v) {
   video.dispatchEvent(new Event('seeked'));
   video.dispatchEvent(new Event('timeupdate'));
 }
+// スキミング：止まっているときにタイムラインを引っ張ったら、その位置の音を、少しだけ鳴らす（FCPXと同じように、音を聞きながら位置を探せる）
+let _tlScrubTimer = null, _tlScrubLast = 0;
+function tlScrub() {
+  if (!TL || TL.playing || TL.idx < 0) return;
+  const now = performance.now(); if (now - _tlScrubLast < 50) return; _tlScrubLast = now;
+  const inner = TL.inner;
+  inner.playbackRate = 1;
+  inner.play().catch(() => {});
+  clearTimeout(_tlScrubTimer);
+  _tlScrubTimer = setTimeout(() => { if (TL && !TL.playing) TL.inner.pause(); }, 90);
+}
 function tlPlay() {
   if (!TL || TL.playing) return;
+  clearTimeout(_tlScrubTimer);
   if (TL.t >= TL.duration - 0.05) TL.t = 0;
   TL.baseT = TL.t; TL.baseNow = performance.now(); TL.playing = true;
   tlSel = null;                       // 再生を始めたら、選択は外す（うっかり削除を防ぐ）
