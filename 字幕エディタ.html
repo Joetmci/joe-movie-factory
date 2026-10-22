@@ -8334,7 +8334,7 @@ document.addEventListener('keydown', ev => {
   if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) || (document.activeElement && document.activeElement.isContentEditable)) return;
   if (document.querySelector('.modal-overlay.open, .modal-overlay[style*="flex"]')) return;
   const stop = () => { ev.preventDefault(); ev.stopImmediatePropagation(); };
-  const step = (sec) => { video.currentTime = Math.max(0, Math.min(TL.duration, tlNow() + sec)); };
+  const step = (sec) => { video.currentTime = Math.max(0, Math.min(TL.duration, tlNow() + sec)); tlScrub(); };   // コマ送りでも、その位置の音を少し鳴らす
   switch (ev.key) {
     case 'ArrowLeft':  stop(); step(ev.shiftKey ? -10 / 30 : -1 / 30); break;      // ⇧で10コマ（FCPXと同じ）
     case 'ArrowRight': stop(); step(ev.shiftKey ?  10 / 30 :  1 / 30); break;
