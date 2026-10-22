@@ -4558,7 +4558,7 @@ function tlScrub() {
   inner.playbackRate = 1;
   inner.play().catch(() => {});
   clearTimeout(_tlScrubTimer);
-  _tlScrubTimer = setTimeout(() => { if (TL && !TL.playing) TL.inner.pause(); }, 90);
+  _tlScrubTimer = setTimeout(() => { if (TL && !TL.playing) TL.inner.pause(); }, 180);   // 再生が始まるまでに少しかかるので、短すぎると聞こえない
 }
 function tlPlay() {
   if (!TL || TL.playing) return;
