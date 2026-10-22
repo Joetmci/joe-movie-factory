@@ -8684,8 +8684,8 @@ function convertMulticamTimeline(mcText, cuts, offsetSec, angleOv) {
 
   const pieces = [];
   keeps.forEach(k => {
-    const a = round(((k.start||0)+offsetSec)*tb);
-    const b = round(((k.start||0)+offsetSec+(k.duration||0))*tb);
+    const a = snap(((k.start||0)+offsetSec)*tb);
+    const b = snap(((k.start||0)+offsetSec+(k.duration||0))*tb);
     if (b <= a) return;
     if (k.operation === 'gap') { pieces.push({ gap: true, dur: b - a }); return; }          // ギャップ（映像も音もない、すき間）
     segs.forEach(sg => {
