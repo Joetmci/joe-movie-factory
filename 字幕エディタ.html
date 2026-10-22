@@ -8137,6 +8137,7 @@ async function tlLoadWaveform() {
   const mine = TL;
   try {
     const tok = await ensureTimelineAudio();
+    tlScrubPrepare(tok);                                   // 白線を動かしたときの音（スキミング）の準備
     const r = await fetch(`${HELPER_URL}/timeline-waveform`, { method: 'POST', headers: { 'X-Timeline-Audio': tok }, body: '{}' });
     if (r.status === 404) { toast('波形を出すには、AIサーバーの再起動が必要です。「start.command」のウィンドウを閉じて、アプリを開き直してください', 'info'); return; }
     const j = await r.json();
