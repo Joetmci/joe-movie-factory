@@ -8184,7 +8184,7 @@ function tlbarInit() {
       if (first) multiDrag = cutWide() && (ev.metaKey || ev.shiftKey);          // ⌘／⇧を押しながら：再生位置は動かさず、選ぶクリップだけを増やす・減らす
       if (multiDrag) { if (first) tlMultiClick(ev, Math.max(0, Math.min(TL.duration, t))); return; }
       video.currentTime = Math.max(0, Math.min(TL.duration, t));
-      if (!first) tlScrub();
+      if (first) tlScrubBlip(); else tlScrub();
       _tlUpdateSelFromPlayhead();
       tlbarDraw();
     };
