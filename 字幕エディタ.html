@@ -8098,7 +8098,7 @@ function tlbarDraw() {
     });
     M.forEach(m => {
       const xx = x(m.start); if (xx < -6 || xx > W + 6) return;
-      g.fillStyle = '#ff9f0a';
+      g.fillStyle = m.kind === 'silence' ? TL_CUT_COLORS.silence : '#ff9f0a';        // 水色＝無音カット
       g.beginPath(); g.moveTo(xx - 5, Y(18)); g.lineTo(xx + 5, Y(18)); g.lineTo(xx, Y(18) + 6); g.fill();
       g.beginPath(); g.moveTo(xx - 5, Y(82)); g.lineTo(xx + 5, Y(82)); g.lineTo(xx, Y(82) - 6); g.fill();
     });
