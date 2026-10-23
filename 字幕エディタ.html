@@ -5481,6 +5481,7 @@ function pkgApplySettings(st, pid) {
 // 編集の内容（カット・ブレード・ギャップ・アングル・字幕）を、ファイルにする／反映する
 function pkgEditState() {
   return { version: 1, app: 'JMF', name: _tlRecordName, duration: TL ? TL.duration : 0, baseDur: tlBaseDur, savedAt: Date.now(),
+           coord: TL && TL._restored ? 'restored' : 'plain',          // restored＝「先に切ってあった所」を戻した長いタイムラインの時間で保存している
            cuts: manualCuts, blades, gaps: tlGaps, angles: tlAngles, marks: tlMarks, imp: TL && TL._impIdx ? { n: TL._impN || 0, idx: [...TL._impIdx] } : null, entries: entries.length ? JSON.parse(JSON.stringify(entries)) : [] };
 }
 function pkgAutosaveSoon() {
@@ -5626,6 +5627,58 @@ async function ensureTimelineAudio() {
   return run;
 }
 
+// ── 先に切ってある所（クリップの間の、素材の飛び）を、「切った範囲」として、戻せる形にする ──────────
+// JMFで書き出したXM（無音カット済み）などは、切った所がクリップの切れ目として固まっている。
+// 同じ素材の、前のクリップの終わりと、次のクリップの始まりの間に、素材の飛びがあれば、その間のクリップを足して、「切った範囲」にする
+// （そのまま書き出せば、元と同じ。✕で戻せば、その部分が戻る）
+function xmlRestoreCuts(xmlText) {
+  const none = { xml: xmlText, ranges: [], n: 0, total: 0, warn: 0 };
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml'); if (doc.querySelector('parsererror')) return none;
+  const CLIPS = ['mc-clip', 'asset-clip', 'clip', 'ref-clip', 'sync-clip'];
+  let spine = null, seq = null;
+  doc.querySelectorAll('project > sequence').forEach(q => { if (spine) return; const sp = q.querySelector('spine'); if (sp && [...sp.children].some(c => CLIPS.includes(c.tagName))) { spine = sp; seq = q; } });
+  if (!spine) return none;
+  const fmt = doc.querySelector(`resources > format[id="${seq.getAttribute('format')}"]`) || doc.querySelector('resources > format');
+  let tb = 6000, fn = 1; const fm = /^(\d+)\/(\d+)s$/.exec((fmt && fmt.getAttribute('frameDuration')) || ''); if (fm) { tb = +fm[2]; fn = +fm[1] || 1; }
+  const T = v => Math.round(_xmlFrac(v) * tb), F = n => `${n}/${tb}s`;
+  const infos = [...spine.children].filter(c => c.hasAttribute('offset') && c.hasAttribute('duration')).map(el => ({ el, off: T(el.getAttribute('offset')), dur: T(el.getAttribute('duration')), st: T(el.getAttribute('start')) }));
+  if (infos.length < 2) return none;
+  const stopA = new Set(['marker', 'chapter-marker', 'rating', 'keyword', 'analysis-marker', 'audio-channel-source', 'filter-video', 'filter-video-mask', 'filter-audio', 'metadata']);
+  const base = infos[0].off; let shift = 0, total = 0; const ranges = [], items = [];       // items：親のクリップにつながった、テロップ・BGMなどの、いまの位置（新しいタイムライン上）
+  for (let i = 0; i < infos.length; i++) {
+    const a = infos[i], b = infos[i + 1], aOff = a.off + shift;
+    if (shift) a.el.setAttribute('offset', F(aOff));
+    [...a.el.children].filter(c => c.hasAttribute('lane')).forEach(c => { const cs = aOff + (T(c.getAttribute('offset')) - a.st); items.push({ el: c, s: cs, e: cs + T(c.getAttribute('duration')), title: c.tagName === 'title' }); });
+    if (!b) break;
+    const gapT = b.st - (a.st + a.dur);
+    const ok = CLIPS.includes(a.el.tagName) && a.el.tagName === b.el.tagName && a.el.getAttribute('ref') && a.el.getAttribute('ref') === b.el.getAttribute('ref')
+      && Math.abs(b.off - (a.off + a.dur)) <= fn && gapT >= 2 * fn && gapT <= 7200 * tb
+      && !a.el.querySelector(':scope > timeMap') && !b.el.querySelector(':scope > timeMap');
+    if (!ok) continue;
+    const P = aOff + a.dur;
+    // 戻す部分の、クリップを足す
+    const c = a.el.cloneNode(true);
+    [...c.children].filter(x => x.hasAttribute('lane') || ['marker', 'chapter-marker', 'rating', 'keyword', 'analysis-marker'].includes(x.tagName)).forEach(x => c.removeChild(x));
+    c.setAttribute('offset', F(P)); c.setAttribute('duration', F(gapT)); c.setAttribute('start', F(a.st + a.dur));
+    spine.insertBefore(c, b.el);
+    // つながったクリップ：この切れ目より後ろに始まるものは、ずらす／切れ目をまたぐもの→テロップは、戻した分だけ、延ばす（元と同じ位置に残るように）／BGMなどは、切れ目で分け、後半を次のクリップにつなぐ
+    items.forEach(it => {
+      if (it.s >= P - 1) { it.el.setAttribute('offset', F(T(it.el.getAttribute('offset')) + gapT)); it.s += gapT; it.e += gapT; return; }
+      if (it.e <= P + fn) return;
+      if (it.title) { it.el.setAttribute('duration', F(T(it.el.getAttribute('duration')) + gapT)); it.e += gapT; return; }
+      const p2 = it.el.cloneNode(true), cutAt = P - it.s;
+      it.el.setAttribute('duration', F(cutAt));
+      p2.setAttribute('offset', F(b.st)); p2.setAttribute('duration', F(it.e - P)); p2.setAttribute('start', F(T(it.el.getAttribute('start')) + cutAt));
+      const before = [...b.el.children].find(x => stopA.has(x.tagName)); if (before) b.el.insertBefore(p2, before); else b.el.appendChild(p2);
+      it.e = P;
+    });
+    ranges.push({ start: (P - base) / tb, end: (P + gapT - base) / tb });
+    shift += gapT; total += gapT / tb;
+  }
+  if (!ranges.length) return none;
+  seq.setAttribute('duration', F(T(seq.getAttribute('duration')) + shift));
+  return { xml: '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n' + new XMLSerializer().serializeToString(doc.documentElement), ranges, n: ranges.length, total, warn: 0 };
+}
 function keepOnlyProject(xmlText, index) {
   const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
   const cands = _fcpxmlSequences(doc);
@@ -5657,7 +5710,8 @@ function openSelectedTimeline() {
 }
 async function openTimeline(xmlText, name, projectIndex, opts = {}) {
   const base = String(name || 'タイムライン').replace(/\.(fcpxmld|fcpxml|xml)$/i, '');
-  const single = keepOnlyProject(xmlText, projectIndex);
+  let single = keepOnlyProject(xmlText, projectIndex), restored = null;
+  if (!opts.skipProject && !opts.rbPreview && !opts.skipRestore) { try { const rs = xmlRestoreCuts(single); if (rs.n) { single = rs.xml; restored = rs; } } catch (e) { console.warn('先に切ってある所の復元に失敗', e); } }
   try { projSaveNow(); } catch (e) {}                // 開いていたものの、最後の編集を、先に保存する
   _rbPreview = !!opts.rbPreview; rbUpdateBanner();
   _projHold = true;                                  // 保存済みの作業を確認するまで、自動保存で上書きしない
@@ -5688,6 +5742,7 @@ async function openTimeline(xmlText, name, projectIndex, opts = {}) {
     _tlRecordXml = single; _tlRecordName = base;
     manualCuts = []; blades = []; tlSel = null; renderCutList();
     tlbarInit();
+    if (restored) { manualCuts = restored.ranges.map(r => ({ start: r.start, end: r.end, silence: true, restored: true })); renderCutList(); tlbarDraw(); }
     currentVideoFile = new File([], `${base}.wav`, { type: 'audio/wav' });
     filename = base;
     document.getElementById('video-panel').classList.remove('hidden');
@@ -5703,6 +5758,7 @@ async function openTimeline(xmlText, name, projectIndex, opts = {}) {
     }
     const warn = [j.missing.length ? `見つからない動画が${j.missing.length}件` : '', j.unsupported ? `未対応のクリップが${j.unsupported}件（再生では飛ばします）` : '', !j.audio ? '音声が見つかりません' : ''].filter(Boolean);
     toast(`🎞 「${base}」を開きました（${Math.floor(Math.round(j.duration) / 60)}分${Math.round(j.duration) % 60}秒）${warn.length ? '　⚠ ' + warn.join('、') : ''}`, warn.length ? 'info' : 'ok');
+    if (restored) toast(`✂ 先に切ってあった所${restored.n}か所（合計${Math.floor(restored.total / 60)}分${Math.round(restored.total % 60)}秒）を、戻せる形（水色）にして開きました。✕で戻せます`, 'ok');
     if (importedTitles) toast(`📝 FCPXのテロップ${importedTitles}個を、字幕として読み込みました（紫の段に出ます。直すと、書き出すXMLに反映されます）`, 'ok');
     await projAfterOpen(base, opts);
   } catch (e) {
