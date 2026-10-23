@@ -5742,7 +5742,7 @@ async function openTimeline(xmlText, name, projectIndex, opts = {}) {
     _tlRecordXml = single; _tlRecordName = base;
     manualCuts = []; blades = []; tlSel = null; renderCutList();
     tlbarInit();
-    if (restored) { manualCuts = restored.ranges.map(r => ({ start: r.start, end: r.end, silence: true, restored: true })); renderCutList(); tlbarDraw(); }
+    if (restored) { TL._restored = restored; manualCuts = restored.ranges.map(r => ({ start: r.start, end: r.end, silence: true, restored: true })); renderCutList(); tlbarDraw(); }
     currentVideoFile = new File([], `${base}.wav`, { type: 'audio/wav' });
     filename = base;
     document.getElementById('video-panel').classList.remove('hidden');
