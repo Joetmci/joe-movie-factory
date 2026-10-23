@@ -5681,6 +5681,27 @@ function xmlRestoreCuts(xmlText) {
   seq.setAttribute('duration', F(T(seq.getAttribute('duration')) + shift));
   return { xml: '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n' + new XMLSerializer().serializeToString(doc.documentElement), ranges, n: ranges.length, total, warn: 0 };
 }
+// 戻す前（短いタイムライン）の時間を、戻したあと（長いタイムライン）の時間に直す。ranges は戻した範囲（長いタイムラインの時間）
+// 始まりは、戻した所と同じ位置なら後ろへ（after=true）、終わりは手前に残す（戻した範囲をカットに含めない）
+function _restoreMapTime(t, ranges, after) {
+  let shift = 0;
+  for (const r of ranges) {
+    const at = r.start - shift;                                  // この範囲が入った位置（短いタイムラインの時間）
+    if (after ? t >= at - 1e-6 : t > at + 1e-6) shift += r.end - r.start; else break;
+  }
+  return t + shift;
+}
+function _restoreRemapEdit(ed, ranges) {
+  const S = t => _restoreMapTime(t, ranges, true), E = t => _restoreMapTime(t, ranges, false);
+  const rg = o => ({ ...o, start: S(o.start), end: Math.max(S(o.start), E(o.end)) });
+  const out = { ...ed, coord: 'restored', duration: TL ? TL.duration : ed.duration, baseDur: TL ? TL.duration : ed.baseDur };
+  out.cuts = [...ranges.map(r => ({ start: r.start, end: r.end, silence: true, restored: true })),
+              ...(ed.cuts || []).filter(c => !c.restored).map(rg)].sort((a, b) => a.start - b.start);
+  out.blades = (ed.blades || []).map(S);
+  out.gaps = (ed.gaps || []).map(rg); out.angles = (ed.angles || []).map(rg); out.marks = (ed.marks || []).map(rg);
+  out.entries = (ed.entries || []).map(en => ({ ...en, start: msToTime(Math.round(S(timeToMs(en.start) / 1000) * 1000)), end: msToTime(Math.round(E(timeToMs(en.end) / 1000) * 1000)) }));
+  return out;
+}
 function keepOnlyProject(xmlText, index) {
   const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
   const cands = _fcpxmlSequences(doc);
