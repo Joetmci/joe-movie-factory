@@ -9473,7 +9473,7 @@ async function cutRun(noExport) {
   const newEntries = entries.filter(e => !e._fromXml);                                                              // 読み込んだテロップは、XMLの中に、元のまま残る。新しく足した字幕だけ、あとから入れる
   if (noExport) {
     if (!ranges.length) { toast('カットする範囲がありません', 'info'); return; }
-    manualCuts = manualCuts.map(c => c.silence ? { start: c.start, end: c.end } : c);       // 無音のまとまりを、1つずつの編集点にする
+    manualCuts = manualCuts.map(c => c.silence ? { start: c.start, end: c.end, fromSilence: true } : c);       // 無音のまとまりを、1つずつの編集点にする（無音だったことは覚えておき、水色で見せる）
     tlOpenCut = null; renderCutList();
     const sec = Math.round(_tlMergedCutSeconds());
     toast(`✅ カットを確定しました（約${Math.floor(sec / 60) ? Math.floor(sec / 60) + '分' : ''}${sec % 60}秒）。編集点は、残っています。あとから、引っ張って伸ばせます。書き出すときは「XMLを出力」を押してください`, 'ok');
