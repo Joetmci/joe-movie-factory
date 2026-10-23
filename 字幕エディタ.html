@@ -8503,6 +8503,12 @@ function tlbarDrawWide(g, W, H) {
   const txt = cutTotal > 0 ? `残り ${_tlFmt(durE)}　（元 ${_tlFmt(dur)} から −${_tlFmt(cutTotal)}）` : `全体 ${_tlFmt(dur)}`;
   g.font = 'bold 12px -apple-system, sans-serif'; g.textBaseline = 'middle'; const tw2 = g.measureText(txt).width;
   g.fillStyle = 'rgba(28,28,32,0.9)'; g.fillRect(W - tw2 - 18, 3, tw2 + 14, 17); g.fillStyle = cutTotal > 0 ? '#30d158' : '#9a9aa2'; g.fillText(txt, W - tw2 - 11, 12);
+  // 色の見方（いま、タイムラインにあるものだけ）
+  { const items = ['silence', 'manual', 'ai'].filter(k => M.some(m => m.kind === k)).map(k => [TL_CUT_COLORS[k], `▼ ${TL_CUT_NAMES[k]}`]);
+    if (cams.length) items.push(['#c8d4ff', '📷 カメラ切り替え（番号＝カメラ）']);
+    g.font = '10px -apple-system, sans-serif'; g.textBaseline = 'middle'; let lx = 6;
+    items.forEach(([col, lab]) => { g.fillStyle = col; g.fillText(lab, lx, H - 9); lx += g.measureText(lab).width + 14; });
+  }
   // 全体の中のどこを見ているか
   g.fillStyle = '#3a3a45'; g.fillRect(0, H - 4, W, 4); g.fillStyle = '#0a84ff'; g.fillRect(start / durE * W, H - 4, Math.max(6, span / durE * W), 4);
 }
