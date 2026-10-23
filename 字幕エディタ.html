@@ -8366,11 +8366,39 @@ function tlbarDrawWide(g, W, H) {
       else { g.strokeStyle = 'rgba(255,255,255,0.5)'; g.setLineDash([2, 3]); g.stroke(); g.setLineDash([]); }
     });
   }
+  // カメラ（アングル）が切り替わる所：アングルの色の線と、カメラ番号の札。全体表示でも見えるよう、近すぎる所は線だけにする
+  const cams = _tlCamSwitches(M), cutXs = new Set(M.map(m => Math.round(x(m.start))));
+  { let lastLine = -99, lastTag = -99;
+    g.font = 'bold 11px -apple-system, sans-serif'; g.textBaseline = 'middle';
+    cams.forEach(cs => {
+      let xx = Math.round(x(cs.t)); if (xx < -30 || xx > W + 4 || xx - lastLine < 3) return; lastLine = xx;
+      if (cutXs.has(xx) || cutXs.has(xx - 1) || cutXs.has(xx + 1)) xx += 3;            // カットの線と重なるときは、少し右にずらす
+      const col = TL_ANGLE_COLORS[cs.ai % TL_ANGLE_COLORS.length], lite = _tlLighten(col, 0.45);
+      g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(xx - 2.5, clipsTop, 5, clipH);
+      g.fillStyle = lite; g.fillRect(xx - 1.5, clipsTop, 3, clipH);
+      const lab = `📷${cs.ai + 1}`, tw = g.measureText(lab).width + 8;
+      if (xx - lastTag < tw + 2) return; lastTag = xx;
+      g.fillStyle = col; g.fillRect(xx, clipsTop + 1, tw, HEAD - 2);
+      g.strokeStyle = '#fff'; g.lineWidth = 1; g.strokeRect(xx + 0.5, clipsTop + 1.5, tw - 1, HEAD - 3);
+      g.fillStyle = '#fff'; g.fillText(lab, xx + 4, clipsTop + HEAD / 2 + 1);
+    });
+  }
   // 編集点：カットして詰めた所は「実線」、ブレードを入れただけの所は「点線」（FCPXと同じ）
-  M.forEach(m => {
-    const xx = Math.round(x(m.start)) + 0.5; if (xx < -4 || xx > W + 4) return;
-    g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.beginPath(); g.moveTo(xx, clipsTop - 2); g.lineTo(xx, clipsBottom + 2); g.stroke();
-  });
+  // 実線は、カットの種類で色を変える（水色＝無音カット／白＝手でカット／赤＝字幕の✂）。クリップの上に、同じ色の▼も出す（全体表示でも見える）
+  { const lastX = {};
+    ['silence', 'ai', 'manual'].forEach(kind => M.forEach(m => {           // 手でカットを、いちばん上に描く
+      if (m.kind !== kind) return;
+      const xx = Math.round(x(m.start)) + 0.5; if (xx < -6 || xx > W + 6) return;
+      const col = TL_CUT_COLORS[kind];
+      g.strokeStyle = col; g.lineWidth = kind === 'manual' ? 2 : 2.5; g.beginPath(); g.moveTo(xx, clipsTop - 2); g.lineTo(xx, clipsBottom + 2); g.stroke();
+      if (lastX[kind] != null && xx - lastX[kind] < 2) return; lastX[kind] = xx;
+      g.fillStyle = col; g.beginPath(); g.moveTo(xx - 5, clipsTop - 8); g.lineTo(xx + 5, clipsTop - 8); g.lineTo(xx, clipsTop - 1); g.closePath(); g.fill();
+    }));
+  }
+  if (tlCutFlash && performance.now() < tlCutFlash.until) {          // 一覧から飛んだカットの場所を、黄色く光らせる
+    const xx = Math.round(x(tlCutFlash.t)) + 0.5;
+    g.strokeStyle = 'rgba(255,214,10,0.9)'; g.lineWidth = 8; g.beginPath(); g.moveTo(xx, clipsTop - 10); g.lineTo(xx, clipsBottom + 4); g.stroke();
+  }
   [...blades, ...tlGaps.flatMap(gp => [gp.start, gp.end])].forEach(b => {
     const xx = Math.round(x(b)) + 0.5; if (xx < -4 || xx > W + 4) return;
     g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 1.5; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(xx, clipsTop - 2); g.lineTo(xx, clipsBottom + 2); g.stroke(); g.setLineDash([]);
