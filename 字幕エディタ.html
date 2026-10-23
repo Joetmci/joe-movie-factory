@@ -5383,6 +5383,22 @@ async function projOpenModal() {
   } catch (e) { box.innerHTML = `<div style="color:var(--danger);font-size:12px;">読み込めませんでした（AIサーバーの再起動が必要かもしれません）: ${esc(e.message)}</div>`; }
 }
 function projClose() { document.getElementById('proj-modal').style.display = 'none'; }
+// トップページの「編集作業中」：保存されたプロジェクトの一覧を出す。
+// 「動画から字幕を作る」で作った字幕だけの作業は、プロジェクトではなくブラウザに保存されているので、一覧の先頭に足す
+async function homeOpenWork() {
+  await projOpenModal();
+  let a = null; try { a = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null'); } catch (e) {}
+  if (!a || !a.entries || !a.entries.length) return;
+  const box = document.getElementById('proj-list');
+  if (box.textContent.startsWith('まだ')) box.innerHTML = '';
+  const dt = new Date(a.savedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  box.insertAdjacentHTML('afterbegin', `<div class="rm-url" style="align-items:center;gap:8px;"><div style="flex:1;min-width:0;"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.filename || '名称未設定')}</b><span style="font-size:11px;color:var(--text2);">${dt} 保存 ・ 字幕 ${a.entries.length}件（前回の作業）</span></div>` +
+    `<button class="btn btn-primary btn-xs" onclick="homeResumeAutosave()">開く</button></div>`);
+}
+function homeResumeAutosave() {
+  try { _pendingRestore = JSON.parse(localStorage.getItem(AUTOSAVE_KEY)); } catch (e) { return; }
+  projClose(); doRestore();
+}
 async function projOpen(id) {
   try {
     if (TL && _tlRecordXml) await projSaveNow();                                  // 開いているものを、先に保存する
