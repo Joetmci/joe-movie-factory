@@ -9428,7 +9428,17 @@ function tlApplySilenceCuts(quiet) {
   if (!quiet) toast(sil.length ? `🔇 無音 ${sil.length}箇所（約${Math.round(sec)}秒）を、カットする範囲にしました。バーに反映されています` : '切れる無音は見つかりませんでした', sil.length ? 'ok' : 'info');
 }
 function cutRemove(i) { manualCuts.splice(i, 1); renderCutList(); }
-function cutJump(i) { if (manualCuts[i]) video.currentTime = Math.max(0, manualCuts[i].start - 1); }
+// カットの場所へ飛ぶ：1秒手前に再生位置を置き、タイムラインの真ん中に見せて、カットの線を少し光らせる（Spaceで、カットのつながりを確かめられる）
+function cutJump(i) {
+  const c = manualCuts[i]; if (!c) return;
+  if (!TL) { video.currentTime = Math.max(0, c.start - 1); return; }
+  const M = _tlMerged(), te = _tlO2E(c.start, M);
+  video.currentTime = Math.max(0, _tlE2O(Math.max(0, te - 1), M));
+  if (tlView.span > 60) tlView.span = 30;                    // 全体表示のときは、見やすい大きさまで寄る
+  tlView.start = Math.max(0, te - tlView.span / 2);
+  tlCutFlash = { t: c.start, until: performance.now() + 1800 }; tlbarDraw();
+  setTimeout(() => { tlCutFlash = null; tlbarDraw(); }, 1850);
+}
 async function cutAutoSilence() {
   if (!TL) { toast('先に、FCPXのタイムラインを開いてください', 'info'); return; }
   toast('🔇 無音を調べています…（数十秒かかることがあります）', 'info');
