@@ -467,6 +467,7 @@ body.tl-mode .vh-tl { display: block; }
 .entry.active { border-color: var(--active) !important; background: #1e1600; box-shadow: inset 0 0 0 1px rgba(255,159,10,0.15); }
 .entry.playing { border-color: var(--success) !important; background: var(--row-active); box-shadow: inset 0 0 0 1px rgba(50,215,75,0.12); }
 .entry.ai-unneeded { border-color: rgba(255,69,58,0.55) !important; background: rgba(255,69,58,0.07); }
+.entry.rec-cut { border-color: rgba(255,69,58,0.55) !important; background: rgba(255,69,58,0.07); }
 .entry.ai-unneeded .text-input { opacity: 0.6; text-decoration: line-through; text-decoration-color: rgba(255,69,58,0.8); }
 .ai-badge {
   grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -475,6 +476,8 @@ body.tl-mode .vh-tl { display: block; }
 .ai-badge b { font-weight: 800; }
 .ai-badge button { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); cursor: pointer; font-family: inherit; }
 .ai-badge button:hover { border-color: var(--success); color: var(--success); }
+.entry.marked { border-left: 4px solid #ff453a; position: relative; }
+.entry.marked::after { content: '⚑'; position: absolute; top: 4px; right: 34px; color: #ff453a; font-size: 13px; pointer-events: none; }
 .entry.selected { border-color: var(--accent); background: var(--row-selected); box-shadow: inset 0 0 0 1px var(--accent-glow); }
 .entry.hidden { display: none; }
 
@@ -582,7 +585,18 @@ body.tl-mode .vh-tl { display: block; }
 #agent-input-wrap { padding:10px 14px 14px; display:flex; flex-direction:column; gap:8px; }
 #agent-input { width:100%; resize:none; background:var(--bg); border:1px solid var(--border); border-radius:10px; color:var(--text); padding:10px 12px; font-size:13px; font-family:inherit; outline:none; }
 #agent-input:focus { border-color: var(--accent2); }
-#learn-prompt {
+#learn-prompt { display: none !important; }
+#rb-preview td, #rb-preview th { padding: 3px 14px 3px 0; vertical-align: top; }
+#rb-preview td:last-child { padding-right: 0; }
+#rb-preview td:nth-child(1), #rb-preview td:nth-child(3), #rb-preview td:nth-child(4) { white-space: nowrap; }
+.dr-row { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; margin: 0 !important; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 13px; }
+.dr-row:hover { border-color: var(--active); }
+.dr-row input[type=checkbox] { width: 18px !important; height: 18px !important; flex: none; margin: 0; padding: 0; }
+.dr-row .dr-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dr-row .dr-ctx { font-size: 11px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dr-row b { color: var(--active); }
+.dr-row small { margin-left: auto; color: var(--text2); font-size: 11px; white-space: nowrap; }
+#learn-prompt-old {
   display: none; position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%); z-index: 800;
   align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
   background: var(--surface); border: 1px solid var(--accent); border-radius: 14px;
@@ -1036,6 +1050,10 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
             <span class="ti-desc">作業した内容のファイル（edit.json）の場所を開く。このファイルを送ってください</span>
           </button>
           <input type="file" id="edit-import-input" accept=".json,application/json" style="display:none">
+          <button class="tool-item" id="btn-reorder" onclick="rbOpen()">
+            <span class="ti-title">🔀 並び替え（編集指示JSON）</span>
+            <span class="ti-desc">編集案（区間の一覧）を読み込んで、カットと並び替えを済ませたFCPXMLを書き出す</span>
+          </button>
           <button class="tool-item" id="btn-mc-cut" onclick="openMcCutModal()">
             <span class="ti-title">🎞️ 無音部分を自動カット</span>
             <span class="ti-desc">動画の無音区間を検出して、カット済みのFCPXMLを作成</span>
@@ -1067,6 +1085,7 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
 
   <div class="spacer"></div>
   <div class="stat-chip hdr-open">字幕 <span id="stat-count">0</span> 件</div>
+  <button class="stat-chip hdr-open" id="learn-badge" style="display:none;cursor:pointer;color:var(--active);border:1px solid var(--active);background:transparent;" onclick="dictReviewOpen()" title="直した字幕から見つかった、辞書の候補です。書き出す前に、一覧で、必要なものだけ選べます">🧠 辞書の候補 <b id="learn-badge-n">0</b></button>
   <div class="stat-chip" id="stat-dur" style="display:none">尺 <span id="stat-time">--</span></div>
 
   <!-- SRTを開く（タイムラインを開いているときは、「XMLを出力」に置き換わる） -->
@@ -1170,9 +1189,10 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
       <canvas id="tlbar"></canvas>
       <div class="tlbar-ctl">
         <button class="btn btn-primary btn-xs tlbar-play" onclick="togglePlay()" title="再生・停止（Space）">▶ 再生・停止<kbd>Space</kbd></button>
+        <button class="btn btn-secondary btn-xs" id="tl-edits-btn" onclick="tlToggleEdits()" title="取り込んだFCPXのタイムラインに、もともと入っていた編集点を、線で見せます（実線＝カットされた所、点線＝ブレード・アングル切り替えだけの所）">┆ 元の編集点：表示</button>
         <button class="btn btn-secondary btn-xs" id="tl-snap-btn" onclick="tlToggleSnap()" title="編集点・字幕に、吸い付くようにします（Nキー）">🧲 スナップ：入</button>
         <button class="btn btn-secondary btn-xs" onclick="tlBlade()" title="再生位置にブレード（切れ目）を入れます">✂ ブレード<kbd>B</kbd></button>
-        <button class="btn btn-danger btn-xs" style="border:1px solid var(--danger);" onclick="tlDeleteSel()" title="選ばれている区間を削除（カット）します。もう一度押すと元に戻ります">🗑 区間を削除<kbd>Delete</kbd></button>
+        <button class="btn btn-danger btn-xs" style="border:1px solid var(--danger);" onclick="tlDeleteKey()" title="選ばれているものを削除します（テロップを選んでいれば、テロップを削除。クリップ・範囲なら、その区間をカット。もう一度押すと元に戻ります）">🗑 区間を削除<kbd>Delete</kbd></button>
         <button class="btn btn-ghost btn-xs" onclick="cutUndo()" title="1つ前の状態に戻します（⌘Z）">↩ 戻す<kbd>⌘Z</kbd></button>
         <span id="tl-angle-ctl" style="display:none"></span>
         <span class="tlbar-sep"></span>
@@ -1435,6 +1455,77 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
   </div>
 </div>
 
+<div id="rb-banner" style="display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:900;align-items:center;gap:10px;padding:8px 14px;background:rgba(18,18,23,0.96);border:1px solid var(--active);border-radius:10px;font-size:12px;box-shadow:0 4px 20px rgba(0,0,0,.5);">
+  <span>🔀 <b>並び替えのプレビュー中</b>（確認用）</span><span id="rb-banner-cost" style="color:var(--text2);"></span>
+  <button class="btn btn-primary btn-xs" onclick="rbReturn()">元のタイムラインに戻る</button>
+  <button class="btn btn-secondary btn-xs" onclick="rbBackToModal()">書き出す画面へ</button>
+</div>
+
+<!-- 並び替え（編集指示JSON） -->
+<div class="modal-overlay" id="reorder-modal" style="display:none;">
+  <div class="modal" style="width:760px;max-width:96vw;max-height:92vh;overflow-y:auto;">
+    <h2>🔀 並び替え（編集指示JSON）</h2>
+    <p style="font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:8px;">いま開いているタイムライン「<b id="rb-name"></b>」（未編集のもの）を、<b>編集指示の順に、区間を並べ直した</b>FCPXMLにします。リストにない区間は、削除されます。同じ区間を2回使ってもかまいません。元のプロジェクトは、上書きしません。</p>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--bg);">
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px;">① Claudeに、編集案を作ってもらう</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+        <span style="font-size:12px;">チャンネル</span>
+        <select id="rb-preset" onchange="rbPresetLoad()" style="min-width:190px;width:auto !important;flex:0 0 auto;"></select>
+        <button class="btn btn-secondary btn-xs" onclick="rbPresetSave(false)" title="いま選んでいるチャンネルに、下の内容を、上書き保存します">💾 保存</button>
+        <button class="btn btn-secondary btn-xs" onclick="rbPresetSave(true)" title="新しいチャンネルとして、名前をつけて保存します">＋ 別の名前で保存</button>
+        <button class="btn btn-ghost btn-xs" onclick="rbPresetDelete()" title="いま選んでいるチャンネルの設定を、削除します">🗑 削除</button>
+        <span id="rb-preset-state" style="font-size:11px;color:var(--text2);"></span>
+      </div>
+      <input id="rb-desc" type="text" oninput="rbPresetDirty()" style="width:100%;margin-bottom:6px;font-size:12px;" placeholder="動画の説明（任意）。例：約10分の一人語り。80代の女性が、人生・健康・お金について語る">
+      <textarea id="rb-policy" oninput="rbPresetDirty()" spellcheck="false" style="width:100%;height:84px;font-size:12px;" placeholder="編集の方針（任意）。例：コープと消費税の話は、長いので削る／冒頭に、いちばん引きのある一言を持ってくる／全体で、7〜8分に収める。何も書かないと、標準の方針（言い淀み・繰り返しを削る、フックを冒頭に、など）になります"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">
+        <button class="btn btn-accent2 btn-xs" onclick="rbCopyPrompt()" title="いま開いているタイムラインの文字起こしと、指示文を、まとめてコピーします。Claudeのチャットに、貼り付けてください">📋 Claudeへの指示文（文字起こし入り）をコピー</button>
+        <button class="btn btn-secondary btn-xs" onclick="rbPasteJson()" title="Claudeが返したJSONをコピーしたあとに押すと、下の欄に貼り付けて、プレビューします">📥 コピーしたJSONを貼り付けて、プレビュー</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);">
+        <span style="font-size:12px;">🤖 自動で作る</span>
+        <select id="rb-model" onchange="rbApiSelChange()" style="min-width:230px;width:auto !important;flex:0 0 auto;"></select>
+        <button class="btn btn-primary btn-xs" id="rb-gen-btn" onclick="rbGenerate()" title="文字起こしを、自分のAPIキーでClaudeに送り、編集案（JSON）を作らせて、そのままプレビューします。使った分だけ、料金がかかります">🤖 Claudeに作らせる</button>
+        <button class="btn btn-ghost btn-xs" onclick="rbKeyToggle()" title="AnthropicのAPIキーを、このMacにだけ保存します">🔑 APIキー</button>
+        <span id="rb-api-state" style="font-size:11px;color:var(--text2);"></span>
+      </div>
+      <div id="rb-key-box" style="display:none;margin-top:6px;padding:8px;border:1px solid var(--border);border-radius:8px;">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <input id="rb-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-... （AnthropicのAPIキー）" style="flex:1;min-width:240px;font-size:12px;">
+          <button class="btn btn-secondary btn-xs" onclick="rbKeySave()">保存</button>
+          <button class="btn btn-ghost btn-xs" onclick="rbKeyDelete()">削除</button>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.6;">キーは、<b>このMacの中だけ</b>（本人しか読めない形）に保存され、画面には戻しません。Claudeのチャットの月額契約とは別で、<b>使った分だけ</b>、Anthropicに直接支払います（console.anthropic.com でキーを作り、チャージします）。他人には、見せないでください。</div>
+      </div>
+      <details id="rb-api-note-box" style="display:none;margin-top:6px;font-size:12px;"><summary style="cursor:pointer;color:var(--text2);">Claudeの説明（削除した部分の一覧など）</summary><div id="rb-api-note" style="white-space:pre-wrap;line-height:1.7;margin-top:4px;"></div></details>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px;">流れ：指示文をコピー → Claudeのチャットに貼る → 返ってきたJSON（コードブロック）をコピー → 「コピーしたJSONを貼り付けて、プレビュー」</div>
+    </div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">② 編集指示（JSON）</div>
+    <textarea id="rb-json" spellcheck="false" style="width:100%;height:170px;font-family:monospace;font-size:12px;" placeholder='{ "source": "億ママ_1023", "timebase": "source", "segments": [ { "in": "09:35", "out": "09:47", "label": "フック" }, { "in": "00:00", "out": "01:54", "label": "挨拶" } ] }'></textarea>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0;">
+      <button class="btn btn-secondary btn-xs" onclick="document.getElementById('rb-file').click()">📂 JSONファイルを読み込む</button>
+      <label style="font-size:12px;display:flex;align-items:center;gap:6px;">前後の余白 <input type="number" id="rb-pad" value="0.3" min="0" max="5" step="0.1" style="width:64px;"> 秒</label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;" title="入れると、Claudeが「カットしたほうがよい」と考えた所も、削らずに残し、印だけ付けます（アプリでは赤いテロップ、FCPXでは赤いToDoマーカー）。自分で見て、切るかどうかを決められます。外すと、その区間を、実際に削ります"><input type="checkbox" id="rb-markonly" checked onchange="rbMarkOnlyChange()" style="width:auto;"> ✂ カット推奨の区間は、削らずに残して、印だけ付ける</label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="rb-markers" checked style="width:auto;"> 区間の名前を、マーカーで残す</label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="rb-auto" checked style="width:auto;"> プレビューしたら、アプリのタイムラインでも確認する</label>
+      <input type="file" id="rb-file" accept=".json,application/json" style="display:none">
+    </div>
+    <div id="rb-preview" style="font-size:12px;line-height:1.7;margin:8px 0;"></div>
+    <div class="actions"><button class="btn btn-primary" onclick="rbPreviewClick()" title="区間の一覧を出して、アプリのタイムラインにも開きます（確認用）">▶ プレビュー</button><button class="btn btn-secondary" onclick="rbOpenInApp()" title="並び替えた結果を、アプリのタイムラインに開いて、再生して確認します（確認用）">▶ アプリのタイムラインで確認</button><button class="btn btn-warn" id="rb-export" onclick="rbExport()">FCPXMLを書き出す</button><button class="btn btn-ghost" onclick="rbClose()">閉じる</button></div>
+  </div>
+</div>
+
+<!-- 辞書登録の候補（書き出す前に、一覧で選ぶ） -->
+<div class="modal-overlay" id="dict-review-modal" style="display:none;">
+  <div class="modal" style="width:620px;max-width:94vw;max-height:88vh;overflow-y:auto;">
+    <h2>🧠 辞書に登録するものを選んでください</h2>
+    <p id="dict-review-desc" style="font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:8px;">直した字幕から、見つかった候補です。<b>必要なものだけ、チェックを入れて</b>ください。登録すると、いまの字幕と、これからの文字起こしに、反映されます。</p>
+    <div style="display:flex;gap:6px;margin-bottom:8px;"><button class="btn btn-secondary btn-xs" onclick="dictReviewAll(true)">すべて選ぶ</button><button class="btn btn-secondary btn-xs" onclick="dictReviewAll(false)">すべて外す</button></div>
+    <div id="dict-review-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;"></div>
+    <div class="actions" id="dict-review-actions"></div>
+  </div>
+</div>
+
 <!-- プロジェクト -->
 <div class="modal-overlay" id="proj-modal" style="display:none;" onclick="if(event.target===this) projClose()">
   <div class="modal" style="width:640px;max-width:94vw;max-height:88vh;overflow-y:auto;">
@@ -1526,13 +1617,18 @@ footer .right { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
           <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>前・次の区切り（ブレード・切れ目・字幕の頭）へ飛ぶ</td></tr>
           <tr><td><kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd></td><td>遅く／停止／速く（0.5〜3倍）</td></tr>
           <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>先頭・末尾へ</td></tr>
-          <tr><td><kbd>B</kbd> / <kbd>⌘B</kbd></td><td>再生位置にブレードを入れる</td></tr>
+          <tr><td><kbd>B</kbd> / <kbd>⌘B</kbd></td><td>再生位置にブレードを入れる。<b>再生位置にあるテロップも、2つに切れる</b>（テロップを選んでいれば、選んだものだけ）。文字は、単語の時間が分かるときはその区切りで、分からないときは時間の割合で分けます</td></tr>
           <tr><td><kbd>⌘＋</kbd> <kbd>⌘－</kbd> / <kbd>⇧Z</kbd></td><td>タイムラインの拡大・縮小／全体を表示</td></tr>
+          <tr><td><kbd>Delete</kbd>（テロップ）</td><td>テロップを選んでいるとき（クリック・なぞる・<kbd>⌘A</kbd>）は、<b>選んだテロップを、削除</b>する（10個以上は、確認が出る）。<kbd>⌘Z</kbd>で戻せる。最後に選んだのが、クリップのときは、そちらが削除される</td></tr>
           <tr><td><kbd>Delete</kbd></td><td>選ばれているクリップ、または<kbd>I</kbd><kbd>O</kbd>で決めた範囲を、削除する</td></tr>
           <tr><td><kbd>⇧Delete</kbd></td><td>削除して詰めずに、<b>ギャップ</b>（映像も音もない、すき間）に置き換える。ギャップを選んで<kbd>Delete</kbd>を押すと、元に戻る</td></tr>
           <tr><td><kbd>I</kbd> / <kbd>O</kbd> / <kbd>Esc</kbd></td><td>範囲の始まり／終わりを決める／範囲を外す</td></tr>
+          <tr><td>タイムラインの線</td><td><b>白い太い実線</b>＝このアプリでカットして詰めた所（無音カット・手動カット）／<b>細い実線</b>＝元のFCPXで、もともとカットされていた所／<b>点線</b>＝ブレード、またはアングル切り替えだけで、中身はつながっている所。「┆ 元の編集点」ボタンで、細い線の表示を切り替えられる</td></tr>
           <tr><td><kbd>1</kbd>〜<kbd>9</kbd></td><td>マルチカムの<b>アングル切り替え</b>（映像だけ。音声はそのまま）。選んだクリップ全部、なければ<kbd>I</kbd><kbd>O</kbd>の範囲、なければ再生位置にあるクリップ（ブレードで分かれた1つ）が対象。XMLにも反映される</td></tr>
           <tr><td><kbd>⌘</kbd>クリック / <kbd>⇧</kbd>クリック</td><td>クリップを<b>複数選択</b>（⌘＝追加・外す、⇧＝範囲）。<kbd>Delete</kbd>・<kbd>⇧Delete</kbd>・アングル切り替えが、まとめて効く</td></tr>
+          <tr><td><kbd>M</kbd></td><td><b>マーキング（印）</b>。選んだテロップに印（⚑）をつける／外す。テロップを選んでいなければ、選んだクリップ・<kbd>I</kbd><kbd>O</kbd>の範囲に、それもなければ、再生位置に印をつける。印は、保存され、<kbd>↑</kbd><kbd>↓</kbd>で飛べる</td></tr>
+          <tr><td>テロップの段を、なぞる</td><td>紫のテロップの段の、空いている所から、ドラッグすると、四角い枠が出て、<b>枠に触れたテロップを、まとめて選べる</b>（⌘・⇧を押していると追加）。<kbd>⌘A</kbd>で全部、<kbd>Esc</kbd>で選びを外す</td></tr>
+          <tr><td>テロップをクリック・ドラッグ</td><td>紫のテロップを<b>クリックして選び</b>（⌘クリックで追加・外す、⇧クリックで範囲）、そのまま<b>ドラッグすると、選んだテロップを、まとめて動かせる</b>。再生位置・ほかの字幕・編集点に吸い付く。字幕の一覧の選択と、連動している</td></tr>
           <tr><td>テロップの端をドラッグ</td><td>紫のテロップの<b>左右の端</b>をつかんで引っ張ると、長さを伸び縮みできる（動画のクリップと同じ）。再生位置・ほかの字幕・編集点に吸い付く。<kbd>⌘Z</kbd>で戻せる</td></tr>
           <tr><td><kbd>N</kbd></td><td>スナップ（編集点・字幕に吸い付く）のオン・オフ</td></tr>
           <tr><td><kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd></td><td>元に戻す／やり直す</td></tr>
@@ -2362,7 +2458,7 @@ async function doRestore() {
   const trec = await loadTimelineRecord();
   if (trec && trec.xml) {
     try {
-      await openTimeline(trec.xml, trec.name, 0, { keepCutBase: false, baseDur: trec.baseDur, skipProject: true });
+      await openTimeline(trec.xml, trec.name, 0, { keepCutBase: false, baseDur: trec.baseDur, skipProject: true, skipTitles: true });
       if (Array.isArray(trec.cuts) && trec.cuts.length) { manualCuts = trec.cuts; }
       if (Array.isArray(trec.gaps) && trec.gaps.length) { tlGaps = trec.gaps; }
       if (Array.isArray(trec.angles) && trec.angles.length) { tlAngles = trec.angles; tlRebuildSegs(); }
@@ -2606,7 +2702,8 @@ function render() {
       (e.id === activeId  ? ' active'   : '') +
       (e.id === playingId ? ' playing'  : '') +
       (selectedIds.has(e.id) ? ' selected' : '') +
-      (e._ai ? ' ai-unneeded' : '');
+      (e._mark ? ' marked' : '') +
+      (e._ai ? ' ai-unneeded' : '') + (e._rec ? ' rec-cut' : '');
     div.dataset.id = e.id;
     const vol = e._volume || 0;
     const volPct = Math.round(vol * 100);
@@ -2632,6 +2729,11 @@ function render() {
       badge.innerHTML = e._ai.kind === '手動カット'
         ? `✂ <b>カット対象</b>（動画のこの区間を切ります） <button onclick="aiKeep(${e.id})">戻す</button>`
         : `🤖 <b>不要かも：${esc(e._ai.kind)}</b> ${esc(e._ai.reason || '')} <button onclick="aiKeep(${e.id})">残す</button>`;
+      div.appendChild(badge);
+    }
+    if (e._rec) {                                   // 並び替えで、Claudeが「カット推奨」とした区間のテロップ（削らず、印だけ）
+      const badge = document.createElement('div'); badge.className = 'ai-badge';
+      badge.innerHTML = `✂ <b>カット推奨</b> ${esc(e._rec.reason || '')} <button onclick="recClear(${e.id})">印を外す</button>`;
       div.appendChild(badge);
     }
     const chipBar = document.createElement('div');
@@ -2777,6 +2879,7 @@ function onTextInput(ev) {
 }
 function onRowClick(ev) {
   if (ev.target.closest('input,textarea,button,select')) return;
+  _selKind = 'telop';
   const id = +ev.currentTarget.dataset.id;
   setActiveEntry(id);
   if (ev.shiftKey || ev.metaKey) {
@@ -2809,6 +2912,7 @@ function refreshRowClasses() {
     el.classList.toggle('active',   id === activeId && id !== playingId);
     el.classList.toggle('playing',  id === playingId);
     el.classList.toggle('selected', selectedIds.has(id));
+    { const en = entries.find(x => x.id === id); el.classList.toggle('marked', !!(en && en._mark)); }
   });
 }
 
@@ -4179,6 +4283,7 @@ function cutSelected() {
   render();
   toast(allCut ? `${targets.length}件のカットを戻しました` : `${targets.length}件をカット対象にしました（動画も切るには「無音部分を自動カット」→「字幕でカットにした部分」）`, 'ok');
 }
+function recClear(id) { const e = entries.find(x => x.id === id); if (e) { delete e._rec; render(); tlbarDraw(); } }
 function aiKeep(id) { const e = entries.find(x => x.id === id); if (e) { delete e._ai; render(); } }
 function aiKeepAll() { entries.forEach(e => { delete e._ai; }); render(); toast('不要の印をすべて消しました', 'ok'); }
 function aiDeleteMarked() {
@@ -4313,6 +4418,82 @@ function listFcpxmlProjects(xmlText) {
     return { name: x.seq.parentElement.getAttribute('name') || '（名前なし）', clips: x.spine.children.length, sec: d[0] / d[1] };
   });
 }
+// クリップ（asset-clip・mc-clip）の中の要素を、FCPXMLの規則（DTD）どおりの順番に並べ直す。順番が違うと、FCPXが「DTDの検証でエラー」と言って、読み込めなくなる
+//   順番：note → conform-rate → timeMap → 画面の調整（adjust-…）→ 音量 → パン → mc-source → 重ねるクリップ（title・audio など）→ マーカー → audio-channel-source → フィルター → metadata
+function _fcpxmlFixChildOrder(root) {
+  const rank = tag => {
+    if (tag === 'note') return 0; if (tag === 'conform-rate') return 1; if (tag === 'timeMap') return 2; if (tag === 'object-tracker') return 3;
+    if (/^adjust-(crop|corners|conform|transform|blend|stabilization|rollingShutter|360-transform|reorient|orientation|cinematic|colorConform|stereo-3D)$/.test(tag)) return 4;
+    if (tag === 'adjust-volume') return 5; if (tag === 'adjust-panner') return 6; if (tag === 'mc-source') return 6.5;
+    if (['marker', 'chapter-marker', 'rating', 'keyword', 'analysis-marker'].includes(tag)) return 8;
+    if (tag === 'audio-channel-source') return 9;
+    if (['filter-video', 'filter-video-mask', 'filter-audio'].includes(tag)) return 10;
+    if (tag === 'metadata') return 11;
+    return 7;                                           // 重ねるクリップ（title・audio・video・clip・caption など）
+  };
+  let n = 0;
+  root.querySelectorAll('asset-clip, mc-clip').forEach(el => {
+    const ch = [...el.children], sorted = ch.map((c, i) => ({ c, i, r: rank(c.tagName) })).sort((a, b) => a.r - b.r || a.i - b.i);
+    if (sorted.some((x, i) => x.c !== ch[i])) { sorted.forEach(x => el.appendChild(x.c)); n++; }
+  });
+  return n;
+}
+// ── FCPXで、すでに入っているテロップ（lane付きのtitle）を、字幕として読み込む／書き出すときに、編集だけを、元のXMLへ戻す ──────────
+function _xmlFrac(v) { if (v == null) return 0; v = String(v).trim(); let m = /^(-?\d+)\/(\d+)s$/.exec(v); if (m) return +m[1] / +m[2]; m = /^(-?\d+(?:\.\d+)?)s$/.exec(v); return m ? parseFloat(m[1]) : 0; }
+function xmlTitleNodes(doc) {
+  let spine = null, seq = null;
+  doc.querySelectorAll('project > sequence').forEach(q => { if (spine) return; const sp = q.querySelector('spine'); if (sp && [...sp.children].some(c => ['mc-clip', 'asset-clip', 'clip', 'ref-clip', 'sync-clip'].includes(c.tagName))) { spine = sp; seq = q; } });
+  if (!spine) return null;
+  const kids = [...spine.children].filter(c => c.hasAttribute('offset'));
+  const base = kids.length ? _xmlFrac(kids[0].getAttribute('offset')) : 0;
+  const fmt = doc.querySelector(`resources > format[id="${seq.getAttribute('format')}"]`) || doc.querySelector('resources > format');
+  let tb = 6000, fn = 1; const fm = /^(\d+)\/(\d+)s$/.exec((fmt && fmt.getAttribute('frameDuration')) || ''); if (fm) { tb = +fm[2]; fn = +fm[1] || 1; }
+  const list = [];
+  kids.forEach(p => {
+    const po = _xmlFrac(p.getAttribute('offset')), ps = _xmlFrac(p.getAttribute('start'));
+    [...p.children].filter(t => t.tagName === 'title' && t.hasAttribute('lane')).forEach(t => {
+      const te = t.querySelector('text');
+      list.push({ el: t, parent: p, po, ps, absS: po + (_xmlFrac(t.getAttribute('offset')) - ps) - base, dur: _xmlFrac(t.getAttribute('duration')), text: te ? te.textContent.replace(/\r/g, '').trim() : '' });
+    });
+  });
+  return { list, base, tb, fn };
+}
+function xmlImportTitles(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml'); if (doc.querySelector('parsererror')) return { entries: [], n: 0 };
+  const r = xmlTitleNodes(doc); if (!r) return { entries: [], n: 0 };
+  const entries = [];
+  r.list.forEach((t, i) => {
+    if (!t.text || t.absS + t.dur <= 0.001) return;
+    const start = msToTime(Math.max(0, Math.round(t.absS * 1000))), end = msToTime(Math.round((t.absS + t.dur) * 1000));
+    entries.push({ id: 0, start, end, text: t.text, _fromXml: true, _xmlIdx: i, _orig: { text: t.text, start, end } });
+  });
+  entries.sort((a, b) => timeToMs(a.start) - timeToMs(b.start)); entries.forEach((e, i) => { e.id = i + 1; });
+  return { entries, n: r.list.length };
+}
+// 読み込んだテロップのうち、消した・直したものを、元のXMLのテロップに反映する（見た目・スタイルは、そのまま）
+function xmlApplyImportedEdits(xmlText) {
+  if (!TL || !TL._impIdx || !TL._impIdx.size) return xmlText;
+  const byIdx = new Map(entries.filter(e => e._fromXml).map(e => [e._xmlIdx, e]));
+  const dels = [], mods = [];
+  TL._impIdx.forEach(i => { const e = byIdx.get(i); if (!e) dels.push(i); else if (e.text !== e._orig.text || e.start !== e._orig.start || e.end !== e._orig.end) mods.push([i, e]); });
+  if (!dels.length && !mods.length) return xmlText;
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml'); const r = xmlTitleNodes(doc); if (!r) return xmlText;
+  const snap = n => Math.round(n / r.fn) * r.fn;
+  dels.forEach(i => { const t = r.list[i]; if (t && t.el.parentNode) t.el.parentNode.removeChild(t.el); });
+  mods.forEach(([i, e]) => {
+    const t = r.list[i]; if (!t) return;
+    const sMs = timeToMs(e.start), dMs = Math.max(1, timeToMs(e.end) - sMs);
+    const absSnap = snap(Math.round((sMs / 1000 + r.base) * r.tb));                       // タイムライン上の位置を、1コマの区切りにそろえ、親クリップの内部時間に直す
+    t.el.setAttribute('offset', `${absSnap - Math.round(t.po * r.tb) + Math.round(t.ps * r.tb)}/${r.tb}s`);
+    t.el.setAttribute('duration', `${Math.max(r.fn, snap(Math.round(dMs / 1000 * r.tb)))}/${r.tb}s`);
+    if (e.text !== e._orig.text) {
+      const te = t.el.querySelector('text');
+      if (te) { const ch = [...te.children]; if (ch.length) ch.forEach((c, k) => { if (k === 0) c.textContent = e.text; else te.removeChild(c); }); else te.textContent = e.text; }
+      t.el.setAttribute('name', e.text.replace(/\s+/g, ' ').trim());
+    }
+  });
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n' + new XMLSerializer().serializeToString(doc.documentElement);
+}
 function injectTitlesIntoFcpxml(xmlText, entryList, projectIndex) {
   const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
   if (doc.querySelector('parsererror')) throw new Error('FCPXMLを読み取れませんでした');
@@ -4356,7 +4537,7 @@ function injectTitlesIntoFcpxml(xmlText, entryList, projectIndex) {
   // FCPXが自分で書き出すファイルでの表記に合わせる（例: けいふぉんと → Keifont / Regular）
   const FCP_FONT_NAMES = { 'けいふぉんと': ['Keifont', 'Regular'] };
   const [fcpFont, fcpFace] = FCP_FONT_NAMES[st.font] || [st.font, null];
-  const stopTags = new Set(['marker', 'chapter-marker', 'rating', 'keyword', 'analysis-marker', 'filter-video', 'filter-video-mask', 'filter-audio', 'metadata']);
+  const stopTags = new Set(['marker', 'chapter-marker', 'rating', 'keyword', 'analysis-marker', 'audio-channel-source', 'filter-video', 'filter-video-mask', 'filter-audio', 'metadata']);   // テロップは、これらより前に置く（FCPXMLの規則）
 
   const sorted = [...entryList].sort((a, b) => timeToMs(a.start) - timeToMs(b.start));
   const iPlan = planTitleLanes(sorted.map(e => ({ s: timeToMs(e.start) / 1000, e: timeToMs(e.end) / 1000, lines: Math.max(1, String(e.text).split('\n').length) })), _titleStepPct(st));
@@ -4385,8 +4566,10 @@ function injectTitlesIntoFcpxml(xmlText, entryList, projectIndex) {
     if (before) parent.el.insertBefore(t, before); else parent.el.appendChild(t);
     placed++;
   });
+  const fixed = _fcpxmlFixChildOrder(doc.documentElement);        // 念のため、クリップの中の要素の順番を、規則どおりに整える
+  if (fixed) console.warn(`FCPXMLの要素の順番を、${fixed}か所、整えました`);
   const out = new XMLSerializer().serializeToString(doc.documentElement);
-  return { xml: '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n' + out, count: placed, lane };
+  return { xml: '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE fcpxml>\n' + out, count: placed, lane, fixed };
 }
 
 // macOS標準の選択画面（AIサーバー経由）でFCPXMLを選ぶ。.fcpxmld パッケージもそのまま選べる
@@ -4506,7 +4689,7 @@ function runCombine() {
 //  FCPXタイムラインを開く（元の動画をつないで再生し、そのまま編集する）
 // ════════════════════════════════════════════
 let TL = null;
-let tlAngles = [], tlSels = [], tlSelAnchor = null;      // アングルの切り替え（時間の範囲＋アングル番号）／複数選択
+let tlAngles = [], tlSels = [], tlSelAnchor = null, tlMarks = [];      // tlMarks＝再生位置・範囲の印（テロップの印は、字幕の _mark）      // アングルの切り替え（時間の範囲＋アングル番号）／複数選択
 
 function tlNow() {
   if (!TL) return 0;
@@ -4699,7 +4882,7 @@ function tlTick() {
   TL.raf = requestAnimationFrame(tlTick);
 }
 function tlDisable() {
-  tlAngles = []; tlSels = [];
+  tlAngles = []; tlSels = []; tlMarks = [];
   if (!TL) return;
   try { Object.values(TL.px || {}).forEach(px => { if (px.local && px.url && px.url.startsWith('blob:')) URL.revokeObjectURL(px.url); }); } catch (e) {}
   cancelAnimationFrame(TL.raf);
@@ -4813,17 +4996,322 @@ async function openExported(id) {
 }
 if (!isRemotePage()) { pollNotif(); setInterval(pollNotif, 3000); }
 
+// ── 並び替え：画面 ──────────
+let _rbPreview = false, _rbOrig = null;                       // 並び替えのプレビューを、アプリのタイムラインで見ているか／元のタイムライン
+const rbSrcXml = () => (_rbPreview && _rbOrig) ? _rbOrig.xml : _tlRecordXml;
+const rbSrcName = () => (_rbPreview && _rbOrig) ? _rbOrig.name : _tlRecordName;
+function rbOpen() {
+  closeToolsMenu();
+  if (!TL || !_tlRecordXml) { toast('先に、並び替えたいタイムライン（FCPXML）を開いてください', 'info'); return; }
+  document.getElementById('rb-name').textContent = rbSrcName() || '';
+  try { const c = document.getElementById('rb-markonly'); if (c && localStorage.getItem('rb_markonly') === '0') c.checked = false; } catch (e) {}
+  rbPresetInit(); rbApiInit();
+  document.getElementById('rb-preview').innerHTML = '';
+  document.getElementById('reorder-modal').style.display = 'flex';
+}
+function rbClose() { document.getElementById('reorder-modal').style.display = 'none'; }
+// 貼り付けた文字から、編集指示（segments を持つJSON）だけを、探して読む。「```json」の囲み・説明文・2重に貼った内容・全角の引用符・末尾のカンマがあっても、読める
+function rbReadPlan(txt) {
+  const t = String(txt).replace(/[“”]/g, '"').replace(/```[a-zA-Z]*/g, '');
+  const blocks = []; let depth = 0, start = -1, inStr = false, esc = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') { if (depth > 0) inStr = true; continue; }
+    if (ch === '{' || ch === '[') { if (depth === 0) start = i; depth++; }
+    else if (ch === '}' || ch === ']') { depth--; if (depth === 0 && start >= 0) { blocks.push(t.slice(start, i + 1)); start = -1; } if (depth < 0) depth = 0; }
+  }
+  let firstErr = null;
+  for (const b of blocks) {
+    try { const o = JSON.parse(b.replace(/,(\s*[}\]])/g, '$1')); const list = Array.isArray(o) ? o : (o && o.segments); if (Array.isArray(list)) return o; }
+    catch (e) { if (!firstErr) { const m = /position (\d+)/.exec(e.message); firstErr = e.message + (m ? `（その近く：「${b.slice(Math.max(0, +m[1] - 12), +m[1] + 12).replace(/\n/g, ' ')}」）` : ''); } }
+  }
+  throw new Error(firstErr ? 'JSONの形が、正しくありません：' + firstErr : '編集指示が、見つかりません。「segments」（区間の一覧）を含むJSONを、貼り付けてください');
+}
+// ── チャンネルごとの設定（動画の説明・編集の方針）を、名前をつけて保存して、選べる ──────────
+const RB_NEW = '__new__';
+function rbPresets() { try { const a = JSON.parse(localStorage.getItem('rb_presets_v1') || '[]'); return Array.isArray(a) ? a.filter(p => p && p.name) : []; } catch (e) { return []; } }
+function rbSetPresets(a) { try { localStorage.setItem('rb_presets_v1', JSON.stringify(a)); } catch (e) {} }
+function rbPresetRender(sel) {
+  const el = document.getElementById('rb-preset'); if (!el) return;
+  const list = rbPresets();
+  el.innerHTML = `<option value="${RB_NEW}">（保存していない・標準）</option>` + list.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+  el.value = (sel && list.some(p => p.name === sel)) ? sel : RB_NEW;
+}
+function rbPresetCur() { const v = document.getElementById('rb-preset').value; return v === RB_NEW ? null : (rbPresets().find(p => p.name === v) || null); }
+function rbPresetDirty() {
+  const st = document.getElementById('rb-preset-state'); if (!st) return;
+  const p = rbPresetCur(), d = document.getElementById('rb-desc').value, t = document.getElementById('rb-policy').value;
+  st.textContent = p ? ((p.desc || '') === d && (p.policy || '') === t ? '✔ 保存済み' : '● 変更あり（💾で保存）') : ((d || t) ? '● 保存していません（＋で、名前をつけて保存）' : '');
+}
+function rbPresetLoad() {
+  const p = rbPresetCur();
+  document.getElementById('rb-desc').value = p ? (p.desc || '') : ''; document.getElementById('rb-policy').value = p ? (p.policy || '') : '';
+  try { localStorage.setItem('rb_preset_sel', p ? p.name : ''); } catch (e) {}
+  rbPresetDirty();
+}
+function rbPresetSave(asNew) {
+  const d = document.getElementById('rb-desc').value.trim(), t = document.getElementById('rb-policy').value.trim();
+  if (!d && !t) { toast('保存する内容（動画の説明か、編集の方針）を、入力してください', 'info'); return; }
+  let name = (!asNew && rbPresetCur()) ? rbPresetCur().name : null;
+  if (!name) {
+    name = (prompt('チャンネルの名前を入力してください（例：億ママ）') || '').trim(); if (!name) return;
+    if (rbPresets().some(p => p.name === name) && !confirm(`「${name}」は、すでにあります。上書きしますか？`)) return;
+  }
+  const list = rbPresets().filter(p => p.name !== name); list.push({ name, desc: d, policy: t }); list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  rbSetPresets(list); try { localStorage.setItem('rb_preset_sel', name); } catch (e) {}
+  rbPresetRender(name); rbPresetDirty(); toast(`💾 「${name}」の設定を、保存しました`, 'ok');
+}
+function rbPresetDelete() {
+  const p = rbPresetCur(); if (!p) { toast('削除するチャンネルが、選ばれていません', 'info'); return; }
+  if (!confirm(`「${p.name}」の設定を、削除します。よろしいですか？`)) return;
+  rbSetPresets(rbPresets().filter(x => x.name !== p.name)); try { localStorage.setItem('rb_preset_sel', ''); } catch (e) {}
+  rbPresetRender(null); rbPresetLoad(); toast('削除しました', 'ok');
+}
+function rbPresetInit() {
+  // 前の版で保存した、1つだけの方針があれば、「標準」として引き継ぐ
+  try { const old = localStorage.getItem('rb_policy'); if (old && old.trim() && !rbPresets().length) { rbSetPresets([{ name: '標準', desc: '', policy: old.trim() }]); localStorage.setItem('rb_preset_sel', '標準'); localStorage.removeItem('rb_policy'); } } catch (e) {}
+  let sel = ''; try { sel = localStorage.getItem('rb_preset_sel') || ''; } catch (e) {}
+  rbPresetRender(sel); rbPresetLoad();
+}
+// Claudeに渡す、指示文（いまの字幕・テロップの文字起こし入り）を作る
+const rbMarkOnly = () => { const c = document.getElementById('rb-markonly'); return !c || c.checked; };
+function rbMarkOnlyChange() { try { localStorage.setItem('rb_markonly', rbMarkOnly() ? '1' : '0'); } catch (e) {} rbApiRender(); if (document.getElementById('rb-json').value.trim()) rbPreviewClick(); }
+function rbBuildPrompt() {
+  const name = rbSrcName() || 'タイムライン', dur = TL ? TL.duration : 0, m = Math.floor(dur / 60), sc = Math.round(dur % 60);
+  const mmss = ms => { const t = Math.round(ms / 1000); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
+  const lines = entries.slice().sort((a, b) => timeToMs(a.start) - timeToMs(b.start)).map(e => `[${mmss(timeToMs(e.start))}] ${String(e.text || '').replace(/\s+/g, ' ').trim()}`).filter(l => !/^\[\d+:\d+\]\s*$/.test(l));
+  const policy = (document.getElementById('rb-policy').value || '').trim() || '- 言い淀み、言い間違い、同じことの繰り返し、本題から外れた脱線は、削除する\n- 冒頭は、後半にある、いちばん引きのある一言（フック）を、先に持ってくる（同じ区間を、あとでも使ってよい）\n- 話の流れが自然につながるように、並び替える\n- 切る位置は、文の区切り（句点の直後）にする。言葉の途中では、切らない';
+  const markOnly = rbMarkOnly();
+  return `動画の編集案を、JSONで作ってください。
+
+【動画】「${name}」（${m}分${sc}秒）。${(document.getElementById('rb-desc').value || '').trim() || '毎週、不要部分の削除と、話の並び替えをしています。'}
+
+【文字起こし】一番下に、時間つきの文字起こしを貼ります。時間は、このタイムラインの時間（先頭が00:00）です。
+
+【編集の方針】
+${policy}
+
+${markOnly ? `【カットの扱い】カットしたほうがよい区間（言い淀み・繰り返し・脱線など）は、リストから外さずに、**元の話の位置にそのまま入れて**、"cut": true と、"reason"（短い理由）を付けてください。人間が、自分で見て、切るかどうかを決めます。冒頭のフック（後半から先頭へ持ってくる区間）は、通常の区間として入れます。
+
+【出力の形式】次のJSONだけを、コードブロックで出してください。
+{
+  "source": "${name}",
+  "timebase": "timeline",
+  "segments": [
+    { "in": "MM:SS", "out": "MM:SS", "label": "短い見出し" },
+    { "in": "MM:SS", "out": "MM:SS", "label": "短い見出し", "cut": true, "reason": "言い淀み" }
+  ]
+}
+- segments の並び順が、新しい動画の並び順です
+- 動画の全体（00:00から最後まで）を、すき間なく、どれかの区間に入れる（フックの複製だけは、重なってよい）
+- cut が true の区間は、残したまま、印が付きます。削除したい区間は、必ず、cut: true にする` : `【出力の形式】次のJSONだけを、コードブロックで出してください。
+{
+  "source": "${name}",
+  "timebase": "timeline",
+  "segments": [
+    { "in": "MM:SS", "out": "MM:SS", "label": "短い見出し" }
+  ]
+}
+- segments の並び順が、新しい動画の並び順です。リストにない区間は、削除されます`}
+- in / out は、文字起こしの時間から選び、MM:SS で書く。動画の長さ（${m}:${String(sc).padStart(2, '0')}）を超えない
+- 区間が重なるのは、フックの複製のときだけにする
+JSONのあとに、${markOnly ? 'カットを推奨した部分の一覧（時間と理由）と、全部切った場合の総尺の見込み' : '削除した部分の一覧（時間と理由）と、新しい総尺の見込み'}も、短く出してください。
+
+【文字起こし】
+${lines.join('\n')}
+`;
+}
+async function rbCopyPrompt() {
+  if (_rbPreview) { toast('いまは、並び替えのプレビュー中です。「元のタイムラインに戻る」を押してから、コピーしてください', 'info'); return; }
+  if (!entries.length) { toast('文字起こしが、ありません。先に、文字起こしをするか、SRTを開いてください（FCPXのテロップが入ったXMLなら、自動で読み込まれます）', 'info'); return; }
+  const text = rbBuildPrompt();
+  try { await navigator.clipboard.writeText(text); toast(`📋 指示文と文字起こし（${entries.length}行）を、コピーしました。Claudeのチャットに、貼り付けてください`, 'ok'); }
+  catch (e) {                                                  // コピーが許可されないときは、自分でコピーできるよう、欄に出す
+    const ta = document.getElementById('rb-json'); ta.value = text; ta.focus(); ta.select();
+    toast('自動でコピーできませんでした。下の欄に出した文章を、⌘A → ⌘C でコピーしてください', 'info');
+  }
+}
+// ── Claude API（自分のAPIキー）で、編集案を自動で作る ─────────────────────────────
+const RB_YEN = 150;                                         // 1ドル＝150円で、概算
+const RB_MODELS = {
+  'claude-opus-5-5': { label: 'Opus 5.5（いちばん賢い・おすすめ）', inP: 4, outP: 20 },
+  'claude-sonnet-5-5': { label: 'Sonnet 5.5（バランス）', inP: 2, outP: 10 },
+  'claude-haiku-5-5': { label: 'Haiku 5.5（いちばん安い）', inP: 0.10, outP: 0.50, bigIn: 100000, inP2: 0.50, outP2: 2.50, tok: 1.3 },
+};
+let _rbApi = { has_key: false, hint: '' }, _rbGenBusy = false, _rbLastMsg = '';
+function rbCostYen(model, inTok, outTok) {
+  const m = RB_MODELS[model], big = m.bigIn && inTok > m.bigIn;
+  return (inTok * (big ? m.inP2 : m.inP) + outTok * (big ? m.outP2 : m.outP)) / 1e6 * RB_YEN;
+}
+function rbYenText(y) { return y < 1 ? '1円未満' : y < 10 ? y.toFixed(1) + '円' : Math.round(y) + '円'; }
+// 送る前の見積もり：日本語は、1文字＝約1.3トークン／出力（考える分を含む）は、約8000トークンと置く（概算）
+function rbEstimate(model, prompt) {
+  const m = RB_MODELS[model], inTok = Math.ceil(prompt.length * 1.3 * (m.tok || 1)), outTok = 8000;
+  return { inTok, outTok, yen: rbCostYen(model, inTok, outTok) };
+}
+async function rbApiStatus() {
+  try { const r = await fetch(`${HELPER_URL}/claude-status`); if (r.ok) _rbApi = await r.json(); } catch (e) {}
+  return _rbApi;
+}
+async function rbApiSelChange() { try { localStorage.setItem('rb_model', document.getElementById('rb-model').value); } catch (e) {} await rbApiStatus(); rbApiRender(); }
+function rbApiRender(msg) {
+  const st = document.getElementById('rb-api-state'); if (!st) return;
+  const btn = document.getElementById('rb-gen-btn'); if (btn) btn.disabled = _rbGenBusy;
+  if (msg) { st.textContent = msg; return; }
+  if (!_rbApi.has_key) { st.innerHTML = '⚠ APIキーが、まだ登録されていません（「🔑 APIキー」から）'; return; }
+  let est = '';
+  if (entries.length && !_rbPreview) { const e = rbEstimate(document.getElementById('rb-model').value, rbBuildPrompt()); est = `　料金の目安：約${rbYenText(e.yen)}（送る前に、確認が出ます）`; }
+  st.textContent = `キー登録済み（${_rbApi.hint}）${est}` + (_rbLastMsg ? `　／　前回：${_rbLastMsg}` : '');
+}
+async function rbApiInit() {
+  const sel = document.getElementById('rb-model'); if (!sel) return;
+  let cur = ''; try { cur = localStorage.getItem('rb_model') || ''; } catch (e) {}
+  sel.innerHTML = Object.keys(RB_MODELS).map(k => `<option value="${k}">${esc(RB_MODELS[k].label)}</option>`).join('');
+  sel.value = RB_MODELS[cur] ? cur : 'claude-opus-5-5';
+  rbApiRender(); await rbApiStatus(); rbApiRender();
+}
+function rbKeyToggle(open) {
+  const b = document.getElementById('rb-key-box'); b.style.display = (open === true || (open !== false && b.style.display === 'none')) ? 'block' : 'none';
+  if (b.style.display === 'block') document.getElementById('rb-key').focus();
+}
+async function rbKeySend(key) {
+  const r = await fetch(`${HELPER_URL}/claude-key`, { method: 'POST', body: JSON.stringify({ key }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || '保存できませんでした');
+  _rbApi = j; return j;
+}
+async function rbKeySave() {
+  const el = document.getElementById('rb-key'), k = el.value.trim(); if (!k) { toast('キーを入れてください', 'info'); return; }
+  try { await rbKeySend(k); el.value = ''; rbKeyToggle(false); rbApiRender(); toast('🔑 APIキーを、このMacに保存しました', 'ok'); }
+  catch (e) { toast(e.message, 'err'); }
+}
+async function rbKeyDelete() {
+  if (!_rbApi.has_key) { toast('保存されているキーは、ありません', 'info'); return; }
+  if (!confirm('保存してあるAPIキーを、このMacから削除します。よろしいですか？')) return;
+  try { await rbKeySend(''); document.getElementById('rb-key').value = ''; rbApiRender(); toast('削除しました', 'ok'); } catch (e) { toast(e.message, 'err'); }
+}
+async function rbGenerate() {
+  if (_rbGenBusy) return;
+  if (_rbPreview) { toast('いまは、並び替えのプレビュー中です。「元のタイムラインに戻る」を押してから、作ってください', 'info'); return; }
+  if (!entries.length) { toast('文字起こしが、ありません。先に、文字起こしをするか、SRTを開いてください（FCPXのテロップが入ったXMLなら、自動で読み込まれます）', 'info'); return; }
+  await rbApiStatus();
+  if (!_rbApi.has_key) { rbApiRender(); rbKeyToggle(true); toast('先に、APIキーを登録してください', 'info'); return; }
+  const model = document.getElementById('rb-model').value, m = RB_MODELS[model], prompt = rbBuildPrompt(), est = rbEstimate(model, prompt);
+  if (!confirm(`この動画の文字起こし（${entries.length}行）を、インターネット経由でClaude（${m.label.replace(/（.*/, '')}）に送り、編集案を作らせます。\n\n料金の目安：約${rbYenText(est.yen)}（概算。実際の料金は、終わったあとに表示します）\n時間の目安：1〜3分\n\n実行しますか？`)) return;
+  _rbGenBusy = true; const t0 = Date.now(); rbApiRender('考え中… 0秒');
+  const tm = setInterval(() => rbApiRender(`考え中… ${Math.round((Date.now() - t0) / 1000)}秒（このまま、お待ちください）`), 1000);
+  try {
+    const res = await fetch(`${HELPER_URL}/claude-generate`, { method: 'POST', body: JSON.stringify({ prompt, model, max_tokens: 32000 }) });
+    const r = await res.json().catch(() => ({})); if (!res.ok || r.error) throw new Error(r.error || `サーバーのエラー（${res.status}）`);
+    const u = r.usage || {}, inTok = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0), outTok = u.output_tokens || 0;
+    const yen = rbCostYen(model, inTok, outTok);
+    let plan; try { plan = rbReadPlan(r.text || ''); } catch (e) { throw new Error((r.stop_reason === 'max_tokens' ? '長すぎて、途中で切れました。' : '返事から、編集指示を読み取れませんでした。') + `（${e.message}）　※料金は、約${rbYenText(yen)}かかりました`); }
+    document.getElementById('rb-json').value = JSON.stringify(plan, null, 2);
+    const note = (r.text || '').replace(/```[a-zA-Z]*[\s\S]*?```/, '').trim(), nb = document.getElementById('rb-api-note-box');
+    document.getElementById('rb-api-note').textContent = note; nb.style.display = note ? 'block' : 'none';
+    const sec = Math.round((Date.now() - t0) / 1000);
+    try { const k = 'rb_api_total'; const t = JSON.parse(localStorage.getItem(k) || '{"yen":0,"n":0}'); t.yen += yen; t.n++; localStorage.setItem(k, JSON.stringify(t)); } catch (e) {}
+    _rbLastMsg = `実際の料金 約${rbYenText(yen)}（入力${inTok.toLocaleString()}・出力${outTok.toLocaleString()}トークン、${sec}秒）`;
+    rbApiRender(`✅ できました　${_rbLastMsg}`); rbUpdateBanner();
+    let tot = null; try { tot = JSON.parse(localStorage.getItem('rb_api_total') || 'null'); } catch (e) {}
+    setTimeout(() => toast(`💰 Claudeの料金：約${rbYenText(yen)}（入力${inTok.toLocaleString()}・出力${outTok.toLocaleString()}トークン）${tot ? `　これまでの合計 約${rbYenText(tot.yen)}（${tot.n}回）` : ''}`, 'ok', 10000), 2500);
+    rbPreviewClick();
+  } catch (e) { rbApiRender('❌ ' + e.message); toast(e.message, 'err'); }
+  finally { clearInterval(tm); _rbGenBusy = false; const b = document.getElementById('rb-gen-btn'); if (b) b.disabled = false; }
+}
+async function rbPasteJson() {
+  try {
+    const t = await navigator.clipboard.readText();
+    if (!t || !t.trim()) { toast('コピーされた文字が、ありません', 'info'); return; }
+    document.getElementById('rb-json').value = t; rbPreviewClick();
+  } catch (e) { toast('貼り付けを許可してください。または、下の欄に、⌘Vで貼り付けてから、「プレビュー」を押してください', 'info'); document.getElementById('rb-json').focus(); }
+}
+function rbRun() {
+  const txt = document.getElementById('rb-json').value.trim();
+  if (!txt) throw new Error('編集指示（JSON）を、貼り付けるか、ファイルを読み込んでください');
+  const plan = rbReadPlan(txt);
+  const tbase = (!Array.isArray(plan) && plan.timebase === 'timeline') ? 'timeline' : 'source';
+  return rbAnalyze(rbSrcXml(), plan, { pad: +document.getElementById('rb-pad').value || 0, timebase: tbase, cutDrop: !rbMarkOnly() });
+}
+function rbPreview() {
+  const box = document.getElementById('rb-preview');
+  try {
+    const a = rbRun();
+    const rows = a.segs.map(g => `<tr style="${g.err ? 'color:var(--danger);' : ''}"><td>${g.i}</td><td>${g.cut && !g.err ? '<span style="color:var(--danger);">✂ </span>' : ''}${esc(g.label)}</td><td>${isFinite(g.inS) ? rbFmt(g.inS) : '?'} 〜 ${isFinite(g.outS) ? rbFmt(g.outS) : '?'}</td><td style="text-align:right;">${g.err ? '—' : g.dur.toFixed(1) + '秒'}</td><td style="color:${g.err ? 'var(--danger)' : 'var(--active)'};">${esc(g.err || g.notes.join('、'))}</td></tr>`).join('');
+    const m = Math.floor(a.total / 60), sec = Math.round(a.total % 60);
+    box.innerHTML = `<table style="width:100%;border-collapse:collapse;"><thead><tr style="color:var(--text2);text-align:left;"><th>#</th><th>名前</th><th>元の位置</th><th style="text-align:right;">尺</th><th>メモ</th></tr></thead><tbody>${rows}</tbody></table>` +
+      `<div style="margin-top:8px;"><b>新しい総尺：${m}分${sec}秒</b>（${a.keeps.length}個のクリップ）${a.cutN && rbMarkOnly() ? `　<span style="color:var(--danger);">うち、✂ カット推奨 ${a.cutN}区間・${Math.round(a.cutSec)}秒（全部切ると ${Math.floor((a.total - a.cutSec) / 60)}分${Math.round((a.total - a.cutSec) % 60)}秒）</span>` : ''}　元の素材：${rbFmt(a.matMin)} 〜 ${rbFmt(a.matMax)}</div>` +
+      a.infos.map(w => `<div style="color:var(--text2);">ℹ ${esc(w)}</div>`).join('') + a.warnings.map(w => `<div style="color:var(--active);">⚠ ${esc(w)}</div>`).join('') +
+      (a.errors.length ? `<div style="color:var(--danger);margin-top:4px;">❌ エラーが${a.errors.length}件あります。直すと、書き出せます。</div>` : '<div style="color:var(--success);margin-top:4px;">✅ 問題は、ありません。「FCPXMLを書き出す」を押してください。</div>');
+    return a;
+  } catch (e) { box.innerHTML = `<div style="color:var(--danger);">❌ ${esc(e.message)}</div>`; return null; }
+}
+function rbPreviewClick() {
+  const a = rbPreview();
+  if (a && !a.errors.length && document.getElementById('rb-auto').checked) rbOpenInApp(a);
+}
+function rbExport() {
+  const a = rbPreview(); if (!a || a.errors.length) return;
+  try {
+    const xml = rbBuild(rbSrcXml(), a, { markers: document.getElementById('rb-markers').checked });
+    saveCutFcpxml(xml, `${rbSrcName() || 'timeline'}_並び替え.fcpxml`, true);
+    toast(`🔀 並び替えたFCPXMLを書き出しました（${Math.floor(a.total / 60)}分${Math.round(a.total % 60)}秒・${a.keeps.length}クリップ）`, 'ok');
+  } catch (e) { toast('書き出せませんでした: ' + e.message, 'err'); console.error(e); }
+}
+// 並び替えた結果を、アプリのタイムラインに開いて、再生・確認する（確認用。書き出しは、並び替えの画面から）
+async function rbOpenInApp(pre) {
+  const a = pre || rbPreview(); if (!a || a.errors.length) return;
+  let xml; try { xml = rbBuild(rbSrcXml(), a, { markers: document.getElementById('rb-markers').checked }); } catch (e) { toast('作れませんでした: ' + e.message, 'err'); return; }
+  if (!_rbPreview) _rbOrig = { xml: _tlRecordXml, name: _tlRecordName, id: projIdOf(_tlRecordName) };       // 戻る先（プレビューの中で、もう一度プレビューしたときは、最初の元を残す）
+  const name = `${a.projName}_並び替え`;
+  rbClose();
+  const marks = [], cutRanges = []; { let pos = 0, last = -1; a.keeps.forEach(k => { if (k.cut) { const lr = cutRanges[cutRanges.length - 1]; if (lr && Math.abs(lr.end - pos) < 0.001 && lr.seg === k.seg) lr.end = pos + k.duration; else cutRanges.push({ start: pos, end: pos + k.duration, seg: k.seg, reason: k.reason || '' }); } if (k.seg !== last) { if (!k.cut) marks.push({ start: pos, end: pos }); last = k.seg; } pos += k.duration; }); cutRanges.forEach(r => marks.push({ start: r.start, end: r.end })); marks.sort((x, y) => x.start - y.start); }
+  await openTimeline(xml, name, 0, { skipProject: true, rbPreview: true, skipTitles: true });
+  if (!TL) return;
+  // テロップを、字幕の段に出す（確認用）／区間の境目に、印（⚑）
+  try {
+    const doc = new DOMParser().parseFromString(xml, 'application/xml'), fr = v => { if (v == null) return 0; const m = /^(-?\d+)\/(\d+)s$/.exec(v); return m ? +m[1] / +m[2] : parseFloat(v) || 0; };
+    const list = [];
+    doc.querySelectorAll('project > sequence > spine > *').forEach(c => {
+      const po = fr(c.getAttribute('offset')), ps = fr(c.getAttribute('start'));
+      [...c.children].filter(t => t.tagName === 'title').forEach(t => {
+        const text = ((t.querySelector('text') || {}).textContent || '').replace(/\s+/g, ' ').trim(); if (!text) return;
+        const st = po + (fr(t.getAttribute('offset')) - ps), du = fr(t.getAttribute('duration'));
+        list.push({ start: msToTime(Math.round(st * 1000)), end: msToTime(Math.round((st + du) * 1000)), text });
+      });
+    });
+    list.sort((x, y) => timeToMs(x.start) - timeToMs(y.start)); list.forEach((e, i) => { e.id = i + 1; });
+    // カット推奨の区間にあるテロップは、赤くして、わかるようにする（削らず、印だけ。再生・長さは、そのまま）
+    let cutTelops = 0;
+    list.forEach(e => { const c = (timeToMs(e.start) + timeToMs(e.end)) / 2000, r = cutRanges.find(r => c >= r.start && c < r.end); if (r) { e._rec = { reason: r.reason }; cutTelops++; } });
+    entries = list; nextId = list.length + 1; selectedIds.clear(); activeId = null; playingId = null; render();
+    window.__rbCutTelops = cutTelops;
+    tlbarHint(`並び替えたタイムラインを、確認用に開きました（テロップ ${list.length}個を、紫の段に表示）。再生して、つなぎ目を確認してください（赤い旗＝区間の頭）`);
+    window.__rbTelops = list.length;
+  } catch (e) { console.warn('テロップの表示に失敗', e); toast('テロップを、アプリの画面に出せませんでした（書き出すXMLには、入ります）: ' + e.message, 'info'); }
+  tlMarks = marks.map(m => ({ start: m.start, end: m.end })); tlbarDraw();
+  video.currentTime = 0;
+  toast(`🔀 並び替えを、アプリのタイムラインに開きました（確認用・テロップ ${window.__rbTelops || 0}個）${cutRanges.length ? `　✂ カット推奨 ${cutRanges.length}か所（赤いテロップ・マーク）` : ''}`, 'ok');
+}
+function rbUpdateBanner() { const b = document.getElementById('rb-banner'); if (b) b.style.display = _rbPreview ? 'flex' : 'none'; const c = document.getElementById('rb-banner-cost'); if (c) c.textContent = _rbLastMsg ? `💰 ${_rbLastMsg}` : ''; }
+function rbReturn() { if (_rbOrig) projOpen(_rbOrig.id); }
+function rbBackToModal() { if (_rbPreview) { document.getElementById('rb-name').textContent = rbSrcName() || ''; rbApiRender(); document.getElementById('reorder-modal').style.display = 'flex'; } }
+document.addEventListener('DOMContentLoaded', () => {
+  const f = document.getElementById('rb-file');
+  if (f) f.addEventListener('change', async () => { const file = f.files && f.files[0]; f.value = ''; if (!file) return; document.getElementById('rb-json').value = await file.text(); rbPreview(); });
+});
+
 // ── プロジェクト：タイムラインごとの、自動保存・一覧・続きから開く ──────────
 let _projCur = null, _projTimer = 0, _projHold = false, _projToldDir = false;
 function projIdOf(name) { return String(name || '').replace(/[\\/:*?"<>|\s]+/g, '_').replace(/^[._]+|[._]+$/g, '').slice(0, 40) || 'timeline'; }
 function projSaveSoon() {
-  if (PKG_MODE || !TL || !_tlRecordXml || _projHold) return;
+  if (PKG_MODE || _rbPreview || !TL || !_tlRecordXml || _projHold) return;
   clearTimeout(_projTimer);
   _projTimer = setTimeout(projSaveNow, 2000);
 }
 async function projSaveNow() {
   clearTimeout(_projTimer);
-  if (PKG_MODE || !TL || !_tlRecordXml || _projHold) return;
+  if (PKG_MODE || _rbPreview || !TL || !_tlRecordXml || _projHold) return;
   const id = projIdOf(_tlRecordName);
   try {
     const r = await fetch(`${HELPER_URL}/project-save`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: false,
@@ -4873,7 +5361,7 @@ async function projOpen(id) {
     const p = await (await fetch(`${HELPER_URL}/project-load?id=${encodeURIComponent(id)}`, { cache: 'no-store' })).json();
     if (!p.xml) throw new Error(p.error || '保存の中身が空です');
     projClose();
-    await openTimeline(p.xml, p.name, 0, { skipProject: true, baseDur: (p.edit || {}).baseDur });
+    await openTimeline(p.xml, p.name, 0, { skipProject: true, skipTitles: true, baseDur: (p.edit || {}).baseDur });
     if (TL && p.edit) pkgApplyEdit(p.edit, true);
     _projCur = id;
     toast(`📁 「${p.name}」を、続きから開きました`, 'ok');
@@ -4885,7 +5373,7 @@ async function projOpenFile(file) {
     if (!p.xml || p.app !== 'JMF') throw new Error('プロジェクトのファイルではないようです');
     if (TL && _tlRecordXml) await projSaveNow();
     projClose();
-    await openTimeline(p.xml, p.name || file.name.replace(/\.[^.]+$/, ''), 0, { skipProject: true, baseDur: (p.edit || {}).baseDur });
+    await openTimeline(p.xml, p.name || file.name.replace(/\.[^.]+$/, ''), 0, { skipProject: true, skipTitles: true, baseDur: (p.edit || {}).baseDur });
     if (TL && p.edit) pkgApplyEdit(p.edit, true);
     toast(`📁 「${p.name || file.name}」を開きました`, 'ok');
   } catch (e) { toast('開けませんでした: ' + e.message, 'err'); }
@@ -4949,7 +5437,7 @@ function pkgApplySettings(st, pid) {
 // 編集の内容（カット・ブレード・ギャップ・アングル・字幕）を、ファイルにする／反映する
 function pkgEditState() {
   return { version: 1, app: 'JMF', name: _tlRecordName, duration: TL ? TL.duration : 0, baseDur: tlBaseDur, savedAt: Date.now(),
-           cuts: manualCuts, blades, gaps: tlGaps, angles: tlAngles, entries: entries.length ? JSON.parse(JSON.stringify(entries)) : [] };
+           cuts: manualCuts, blades, gaps: tlGaps, angles: tlAngles, marks: tlMarks, imp: TL && TL._impIdx ? { n: TL._impN || 0, idx: [...TL._impIdx] } : null, entries: entries.length ? JSON.parse(JSON.stringify(entries)) : [] };
 }
 function pkgAutosaveSoon() {
   if (!PKG_MODE || !PKG_MODE.ready || !TL) return;           // 前回の続きを反映し終わるまでは、保存しない（上書きして消さないため）
@@ -4970,7 +5458,8 @@ function pkgApplyEdit(ed, silent) {
   if (ed.duration && Math.abs(ed.duration - TL.duration) > 1.5 && !confirm(`開いているタイムラインの長さ（${TL.duration.toFixed(0)}秒）と、編集内容の長さ（${ed.duration.toFixed(0)}秒）が違います。\n別のタイムラインの編集内容かもしれません。それでも反映しますか？`)) return false;
   const before = _cutState();
   manualCuts = (ed.cuts || []).map(c => ({ ...c })); blades = (ed.blades || []).slice(); tlGaps = (ed.gaps || []).map(g => ({ ...g }));
-  tlAngles = (ed.angles || []).map(a => ({ ...a })); tlRebuildSegs();
+  tlAngles = (ed.angles || []).map(a => ({ ...a })); tlMarks = (ed.marks || []).map(m => ({ ...m })); tlRebuildSegs();
+  if (ed.imp && TL) { TL._impN = ed.imp.n || 0; TL._impIdx = new Set(ed.imp.idx || []); }
   if (Array.isArray(ed.entries) && ed.entries.length) { entries = ed.entries; nextId = Math.max(nextId || 1, ...entries.map(e => (+e.id || 0) + 1)); if (typeof render === 'function') render(); }
   tlSel = null; tlSels = []; tlOpenCut = null; tlRange = null;
   if (!silent && _cutState() !== before) { _cutUndo.push(before); _cutRedo.length = 0; }
@@ -4997,7 +5486,7 @@ async function pkgOpenOnStart() {
   ['btn-pkg-make', 'btn-edit-import'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   const se = document.getElementById('btn-edit-send'); if (se) se.style.display = '';
   _pendingRestore = null; clearTimelineRecord().catch(() => {});
-  await openTimeline(info.xml, info.name, 0);
+  await openTimeline(info.xml, info.name, 0, { skipTitles: true });
   const applied = !(TL && info.edit) || pkgApplyEdit(info.edit, true);
   if (applied) PKG_MODE.ready = true;
   if (TL) toast(`📦 作業用のフォルダを開きました${info.edit ? '（前回の続きから）' : ''}。終わったら、右上「その他のツール」→「📤 編集内容を渡す」`, 'ok');
@@ -5051,9 +5540,15 @@ function tlEnable(info, name) {
   video.parentElement.insertBefore(gapLabel, document.getElementById('sub-overlay'));
   video.style.aspectRatio = '16 / 9'; video.style.height = 'auto';
   document.body.classList.add('tl-mode');
-  TL = { segs: info.segs.map(sg => ({ ...sg, proxy: false, url: `${HELPER_URL}/media?id=${sg.id}` })), mcs: info.mcs || [], px: {}, pxBusy: new Set(), duration: info.duration, inner,
+  TL = { segs: info.segs.map(sg => ({ ...sg, proxy: false, url: `${HELPER_URL}/media?id=${sg.id}` })), mcs: info.mcs || [], edits: info.edits || null, px: {}, pxBusy: new Set(), duration: info.duration, inner,
          t: 0, playing: false, baseT: 0, baseNow: 0, rate: 1, idx: -1, url: null, raf: 0, lastTU: 0, audioToken: null, name, gapLabel };
   TL.baseSegs = TL.segs.map(s => ({ ...s }));
+  if (!TL.edits) {                                         // 古いAIサーバーのとき：クリップの境目から、おおまかに作る
+    const E = [], bs = TL.baseSegs, seen = new Set();
+    for (let i = 1; i < bs.length; i++) { const cont = bs[i].id === bs[i - 1].id && Math.abs(bs[i - 1].src0 + (bs[i - 1].t1 - bs[i - 1].t0) - bs[i].src0) < 1e-3 && Math.abs(bs[i - 1].t1 - bs[i].t0) < 1e-3; E.push({ t: bs[i].t0, cut: !cont }); seen.add(bs[i].t0.toFixed(3)); }
+    (TL.mcs || []).forEach((m, i) => { if (i > 0 && !seen.has(m.t0.toFixed(3))) E.push({ t: m.t0, cut: false }); });
+    TL.edits = E.sort((a, b) => a.t - b.t);
+  }
   Object.defineProperties(video, {
     currentTime:  { configurable: true, get: () => tlNow(), set: v => tlSeek(v) },
     duration:     { configurable: true, get: () => TL ? TL.duration : NaN },
@@ -5120,6 +5615,7 @@ async function openTimeline(xmlText, name, projectIndex, opts = {}) {
   const base = String(name || 'タイムライン').replace(/\.(fcpxmld|fcpxml|xml)$/i, '');
   const single = keepOnlyProject(xmlText, projectIndex);
   try { projSaveNow(); } catch (e) {}                // 開いていたものの、最後の編集を、先に保存する
+  _rbPreview = !!opts.rbPreview; rbUpdateBanner();
   _projHold = true;                                  // 保存済みの作業を確認するまで、自動保存で上書きしない
   toast('タイムラインを読み込んでいます…（動画の場所を探しています）', 'info');
   try {
@@ -5154,8 +5650,16 @@ async function openTimeline(xmlText, name, projectIndex, opts = {}) {
     document.getElementById('btn-transcribe').style.display = '';
     if (!opts.keepCutBase) { loadMcCutFcpxmlText(single, base + '.fcpxml'); loadCombineText(single, base); }
     updateHomeMode(); render();
+    let importedTitles = 0;
+    if (!opts.skipTitles && !entries.length) {                              // FCPXで、すでにテロップが入っているタイムライン：テロップを、字幕として、読み込む
+      try {
+        const r = xmlImportTitles(single);
+        if (r.entries.length) { entries = r.entries; nextId = r.entries.length + 1; TL._impN = r.n; TL._impIdx = new Set(r.entries.map(e => e._xmlIdx)); selectedIds.clear(); activeId = null; render(); importedTitles = r.entries.length; }
+      } catch (e) { console.warn('テロップの読み込みに失敗', e); }
+    }
     const warn = [j.missing.length ? `見つからない動画が${j.missing.length}件` : '', j.unsupported ? `未対応のクリップが${j.unsupported}件（再生では飛ばします）` : '', !j.audio ? '音声が見つかりません' : ''].filter(Boolean);
     toast(`🎞 「${base}」を開きました（${Math.floor(Math.round(j.duration) / 60)}分${Math.round(j.duration) % 60}秒）${warn.length ? '　⚠ ' + warn.join('、') : ''}`, warn.length ? 'info' : 'ok');
+    if (importedTitles) toast(`📝 FCPXのテロップ${importedTitles}個を、字幕として読み込みました（紫の段に出ます。直すと、書き出すXMLに反映されます）`, 'ok');
     await projAfterOpen(base, opts);
   } catch (e) {
     console.error(e);
@@ -5345,7 +5849,9 @@ function applyLearnedCorrections(text) {
 
 // ── 直した直後に辞書登録を確認する ───────────────────────────
 const IGNORE_KEY = 'learn_ignored_v1';
-let _learnQueue = [];
+const LEARNQ_KEY = 'learn_queue_v1';
+let _learnQueue = (() => { try { const q = JSON.parse(localStorage.getItem(LEARNQ_KEY) || '[]'); return Array.isArray(q) ? q.filter(x => x && x.from && x.to && x.key) : []; } catch (e) { return []; } })();
+function _saveLearnQueue() { try { localStorage.setItem(LEARNQ_KEY, JSON.stringify(_learnQueue.slice(-200))); } catch (e) {} }
 function _getIgnored() { try { return JSON.parse(localStorage.getItem(IGNORE_KEY) || '[]'); } catch (e) { return []; } }
 
 function _proposalFromEdit(orig, edited) {
@@ -5357,6 +5863,12 @@ function _proposalFromEdit(orig, edited) {
   const maxJ = Math.min(orig.length - i, edited.length - i);
   while (j < maxJ && orig[orig.length - 1 - j] === edited[edited.length - 1 - j]) j++;
   let fs = i, fe = orig.length - j, te = edited.length - j;
+  // 直した所が、カタカナ・漢字・英数字の途中なら、その言葉のまとまりまで広げる（「ミシュート」→「ミシュラン」のように、言葉ごと登録する）
+  const cls = ch => /[ァ-ヶー]/.test(ch) ? 'k' : /[一-龥々〆]/.test(ch) ? 'h' : /[A-Za-z0-9]/.test(ch) ? 'a' : '';
+  if (fe > fs) {
+    const lc = cls(orig[fs]); if (lc) while (fs > 0 && cls(orig[fs - 1]) === lc) fs--;
+    const rc = cls(orig[fe - 1]); if (rc) while (fe < orig.length && cls(orig[fe]) === rc) { fe++; te++; }
+  }
   // 1文字だけの直しは誤爆しやすいので、前後の文字を足して3文字以上にする
   while (fe - fs < 3 && fe < orig.length) { fe++; te++; }
   while (fe - fs < 3 && fs > 0) fs--;
@@ -5372,18 +5884,18 @@ function proposeCorrection(orig, edited) {
   const key = p.from + '→' + p.to;
   if (_learnedCorrections.some(r => r.from === p.from && r.to === p.to)) return;
   if (_getIgnored().includes(key) || _learnQueue.some(q => q.key === key)) return;
-  _learnQueue.push({ ...p, key });
+  const same = _learnQueue.findIndex(q => q.from === p.from);          // 同じ言葉を、もう一度直したときは、新しい方に置き換える
+  const item = { ...p, key, orig: (orig || '').trim().slice(0, 60), edited: (edited || '').trim().slice(0, 60) };
+  if (same >= 0) _learnQueue[same] = item; else _learnQueue.push(item);
   showLearnPrompt();
 }
 
-function showLearnPrompt() {
-  const box = document.getElementById('learn-prompt');
-  const q = _learnQueue[0];
-  if (!q) { box.style.display = 'none'; return; }
-  document.getElementById('learn-from').textContent = q.from;
-  document.getElementById('learn-to').textContent = q.to;
-  document.getElementById('learn-more').textContent = _learnQueue.length > 1 ? `　（ほか${_learnQueue.length - 1}件）` : '';
-  box.style.display = 'flex';
+function showLearnPrompt() {                                   // 直すたびに出さない。件数だけを、ヘッダーに小さく出す
+  const box = document.getElementById('learn-prompt'); if (box) box.style.display = 'none';
+  _saveLearnQueue();
+  const b = document.getElementById('learn-badge'), n = document.getElementById('learn-badge-n');
+  if (b) b.style.display = _learnQueue.length ? '' : 'none';
+  if (n) n.textContent = _learnQueue.length;
 }
 
 function registerCorrection(from, to) {
@@ -5395,6 +5907,47 @@ function registerCorrection(from, to) {
   }
   _saveLearnedCorrections();
 }
+
+let _dictThen = null;
+function dictReviewOpen(opts) {
+  _dictThen = (opts && opts.then) || null;
+  if (!_learnQueue.length) { toast('辞書の候補は、ありません', 'info'); const f = _dictThen; _dictThen = null; if (f) f(); return; }
+  document.getElementById('dict-review-list').innerHTML = _learnQueue.map((q, i) => {
+    const cnt = entries.filter(e => (e.text || '').includes(q.from)).length;
+    return `<label class="dr-row"><input type="checkbox" data-i="${i}"><span class="dr-main"><span>「<b>${esc(q.from)}</b>」→「<b>${esc(q.to)}</b>」</span>${q.orig ? `<span class="dr-ctx">直した字幕：${esc(q.orig)} → ${esc(q.edited || '')}</span>` : ''}</span><small>${cnt ? 'ほかの字幕 ' + cnt + '件にも反映' : ''}</small></label>`;
+  }).join('');
+  document.getElementById('dict-review-actions').innerHTML = _dictThen
+    ? `<button class="btn btn-primary" onclick="dictReviewApply(true)">選んだものを登録して、書き出す</button><button class="btn btn-secondary" onclick="dictReviewApply(false)" title="候補は、残ります">登録せずに、書き出す</button><button class="btn btn-ghost" onclick="dictReviewClose()">戻る</button>`
+    : `<button class="btn btn-primary" onclick="dictReviewApply(true)">選んだものを登録</button><button class="btn btn-ghost" onclick="dictReviewClose()">閉じる（あとで）</button>`;
+  document.getElementById('dict-review-modal').style.display = 'flex';
+}
+function dictReviewAll(on) { document.querySelectorAll('#dict-review-list input').forEach(c => { c.checked = on; }); }
+function dictReviewClose() { document.getElementById('dict-review-modal').style.display = 'none'; _dictThen = null; }
+function dictReviewApply(register) {
+  const checks = [...document.querySelectorAll('#dict-review-list input')], picked = new Set(checks.filter(c => c.checked).map(c => +c.dataset.i));
+  if (register) {
+    const ig = _getIgnored(); let regs = 0;
+    _learnQueue.forEach((q, i) => { if (picked.has(i)) { registerCorrection(q.from, q.to); regs++; } else ig.push(q.key); });     // 選ばなかったものは、もう出さない
+    try { localStorage.setItem(IGNORE_KEY, JSON.stringify(ig.slice(-300))); } catch (e) {}
+    const dropped = _learnQueue.length - regs; _learnQueue = [];
+    const changed = regs ? applyLearnedToAll() : 0; if (changed) render();
+    toast(`🧠 ${regs}件を登録しました${changed ? `（字幕 ${changed}件にも反映）` : ''}${dropped ? `。選ばなかった${dropped}件は、もう出しません` : ''}`, 'ok');
+  }
+  const f = _dictThen; _dictThen = null;
+  document.getElementById('dict-review-modal').style.display = 'none';
+  showLearnPrompt();
+  if (f) f();
+}
+// 書き出す前に、辞書の候補があれば、一覧を出す
+['cutRun', 'exportTitlesXML', 'exportFCPXML', 'openFcpxModal', 'exportSRT', 'exportVrew'].forEach(name => {
+  const f = window[name];
+  if (typeof f !== 'function') return;
+  window[name] = function (...a) {
+    if (name === 'cutRun' && a[0]) return f.apply(this, a);              // 「カットを確定」は、書き出しではないので、聞かない
+    if (!_learnQueue.length) return f.apply(this, a);
+    dictReviewOpen({ then: () => f.apply(window, a) });
+  };
+});
 
 function answerLearn(yes) {
   const q = _learnQueue.shift();
@@ -7282,7 +7835,8 @@ function dropCutEntriesIfNeeded() {
 // ════════════════════════════════════════════
 let blades = [], tlSel = null, tlView = { start: 0, span: 60 };
 let tlGaps = [], tlRange = null, tlSnapGuide = null, tlSnapOn = (() => { try { return localStorage.getItem('tl_snap') !== '0'; } catch (e) { return true; } })();
-let tlTitleHover = null, tlTitleDrag = null;      // テロップの端を、つかめる・引っ張っている
+let tlEditsOn = (() => { try { return localStorage.getItem('tl_edits') !== '0'; } catch (e) { return true; } })();      // 元のFCPXの編集点を、線で見せる
+let tlTitleHover = null, tlTitleDrag = null, tlTitleMove = null, tlMarquee = null;      // テロップの端を、つかめる・引っ張っている
 let tlOpenCut = null, tlTrimOrig = null, tlHoverEdge = null, tlHoverB = null, tlTrimInfo = null, tlPtr = { x: 0, y: 0 };   // 「引っ張って直す」ために、広げて見せているカット範囲（manualCutsの要素そのもの）
 
 // 区切りの位置：先頭・末尾・ブレード・カットした所の両端（赤い線）。この「区切りと区切りの間」が、選べるクリップ
@@ -7299,17 +7853,39 @@ function tlSegmentAt(t) {
   return null;
 }
 function _tlAllCuts() {
-  return manualCuts.map(c => ({ start: c.start, end: c.end, manual: true, ref: c }))
-    .concat(entries.filter(e => e._ai).map(e => ({ start: timeToMs(e.start) / 1000, end: timeToMs(e.end) / 1000, manual: false })));
+  return manualCuts.map(c => ({ start: c.start, end: c.end, manual: true, ref: c, kind: _cutKind(c) }))
+    .concat(entries.filter(e => e._ai).map(e => ({ start: timeToMs(e.start) / 1000, end: timeToMs(e.end) / 1000, manual: false, kind: 'ai' })));
 }
+// カットの種類：'silence'＝無音カット（確定後も fromSilence で覚えておく）／'manual'＝手でカット／'ai'＝字幕の✂・AIの「不要かも」
+function _cutKind(c) { return c.silence || c.fromSilence ? 'silence' : 'manual'; }
+const TL_CUT_COLORS = { silence: '#64d2ff', manual: '#ffffff', ai: '#ff6b61' };
+const TL_CUT_NAMES = { silence: '無音カット', manual: '手でカット', ai: '字幕の✂' };
 
 // カットした範囲は、バーの上では詰めて表示する（残り時間が減っていくのが見える）
+// 重なったカットは1つにまとめる。種類は「手でカット」＞「字幕の✂」＞「無音カット」の順に、強い方を残す
 function _tlMerged() {
-  const cs = _tlAllCuts().filter(c => !tlOpenCut || c.ref !== tlOpenCut).map(c => ({ start: Math.max(0, c.start), end: Math.min(TL ? TL.duration : 1e9, c.end) }))
+  const rank = { manual: 3, ai: 2, silence: 1 };
+  const cs = _tlAllCuts().filter(c => !tlOpenCut || c.ref !== tlOpenCut).map(c => ({ start: Math.max(0, c.start), end: Math.min(TL ? TL.duration : 1e9, c.end), kind: c.kind }))
     .filter(c => c.end > c.start).sort((a, b) => a.start - b.start), out = [];
-  cs.forEach(c => { const l = out[out.length - 1]; if (l && c.start <= l.end) l.end = Math.max(l.end, c.end); else out.push({ ...c }); });
+  cs.forEach(c => { const l = out[out.length - 1]; if (l && c.start <= l.end) { l.end = Math.max(l.end, c.end); if (rank[c.kind] > rank[l.kind]) l.kind = c.kind; } else out.push({ ...c }); });
   return out;
 }
+// カメラ（アングル）が切り替わる所：カットで消えた所はとばして、詰めた後に見えるアングルが変わる所だけを返す [{t, ai, name}]
+function _tlCamSwitches(M) {
+  if (!TL || !TL.mcs || !TL.mcs.some(m => m.angles.length > 1)) return [];
+  const runs = tlAngleRuns(0, TL.duration), out = []; let mi = 0, prev = null;
+  runs.forEach(r => {
+    let a = r.a;                                             // r の中で、カットされていない最初の時刻を探す
+    while (mi < M.length && M[mi].end <= a + 1e-6) mi++;
+    for (let j = mi; j < M.length && M[j].start <= a + 1e-6; j++) a = Math.max(a, M[j].end);
+    if (a >= r.b - 1e-6 || r.ai < 0) return;
+    if (prev !== null && prev !== r.ai) out.push({ t: a, ai: r.ai, name: r.name });
+    prev = r.ai;
+  });
+  return out;
+}
+function _tlLighten(hex, k) { const n = parseInt(hex.slice(1), 16), f = v => Math.round(v + (255 - v) * k); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; }
+let tlCutFlash = null;     // 一覧から飛んだカットを、少しの間、光らせる {t, until}
 function _tlO2E(t, M) { let sub = 0; for (const m of M) { if (t >= m.end) sub += m.end - m.start; else { if (t > m.start) sub += t - m.start; break; } } return t - sub; }
 function _tlE2O(te, M) { let o = te; for (const m of M) { if (o >= m.start) o += m.end - m.start; else break; } return o; }
 // ── 5%カットするごとに、編集者を褒める ──────────
@@ -7666,6 +8242,11 @@ function tlbarDrawWide(g, W, H) {
     if (major && xx > -40) { g.fillStyle = '#b4b4bc'; g.fillText(_tlTc(t), xx + 4, 11); }
   }
   g.strokeStyle = '#3a3a42'; g.beginPath(); g.moveTo(0, RULER + 0.5); g.lineTo(W, RULER + 0.5); g.stroke();
+  tlMarks.forEach(m => {                                 // 再生位置・範囲の印：目盛りに、旗と帯
+    const xa = x(m.start), xb = x(m.end); if (xb < -10 || xa > W + 10) return;
+    if (m.end > m.start) { g.fillStyle = 'rgba(255,69,58,0.30)'; g.fillRect(xa, RULER - 5, Math.max(2, xb - xa), 5); }
+    g.fillStyle = '#ff453a'; g.beginPath(); g.moveTo(xa, 3); g.lineTo(xa + 10, 7.5); g.lineTo(xa, 12); g.closePath(); g.fill(); g.fillRect(xa - 0.5, 3, 1.5, RULER - 3);
+  });
 
   // ── テロップのレーン（被っている字幕は、段を分ける）
   const laneEnd = [], lanes = new Map();
@@ -7676,14 +8257,21 @@ function tlbarDrawWide(g, W, H) {
   });
   const nLanes = Math.max(1, Math.min(4, laneEnd.length)), LANE_H = 24;
   const titlesTop = RULER + 6, titlesBottom = titlesTop + nLanes * (LANE_H + 3);
+  TL._tBand = { y0: titlesTop - 4, y1: titlesBottom + 2 };          // テロップの段（ここを、なぞると、まとめて選べる）
   TL._tHits = [];
   entries.forEach(en => {
     const dragging = tlTitleDrag && tlTitleDrag.en === en;
-    const a = dragging ? tlTitleDrag.live.start : timeToMs(en.start) / 1000, b = dragging ? tlTitleDrag.live.end : timeToMs(en.end) / 1000, l = Math.min(lanes.get(en) || 0, nLanes - 1);
+    const mv = (tlTitleMove && tlTitleMove.ids.has(en.id)) ? tlTitleMove.delta : 0;
+    const a = dragging ? tlTitleDrag.live.start : timeToMs(en.start) / 1000 + mv, b = dragging ? tlTitleDrag.live.end : timeToMs(en.end) / 1000 + mv, l = Math.min(lanes.get(en) || 0, nLanes - 1);
     const xa = x(a), xb = x(b); if (xb < 0 || xa > W || xb - xa < 1) return;
     const y = titlesTop + l * (LANE_H + 3);
     TL._tHits.push({ en, xa, xb, y, h: LANE_H });
-    g.fillStyle = en._ai ? '#a8423c' : '#7a5aa8'; g.fillRect(xa, y, Math.max(2, xb - xa - 1), LANE_H);
+    g.fillStyle = (en._ai || en._rec) ? '#a8423c' : '#7a5aa8'; g.fillRect(xa, y, Math.max(2, xb - xa - 1), LANE_H);
+    if (en._mark || en._rec) {                                       // 印（⚑）：上に赤い帯と、旗
+      g.fillStyle = '#ff453a'; g.fillRect(xa, y, Math.max(2, xb - xa - 1), 3);
+      g.beginPath(); g.moveTo(xa, y); g.lineTo(xa + 9, y); g.lineTo(xa, y + 9); g.closePath(); g.fill();
+    }
+    if (selectedIds.has(en.id)) { g.strokeStyle = '#ffd60a'; g.lineWidth = 2; g.strokeRect(xa + 1, y + 1, Math.max(2, xb - xa - 3), LANE_H - 2); g.fillStyle = 'rgba(255,214,10,0.18)'; g.fillRect(xa, y, Math.max(2, xb - xa - 1), LANE_H); }
     if (en.id === activeId) { g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.5; g.strokeRect(xa + 0.75, y + 0.75, Math.max(2, xb - xa - 2.5), LANE_H - 1.5); }
     { const hv = tlTitleDrag || tlTitleHover;
       if (hv && hv.en === en) {                       // 端をつかめる・引っ張っている：黄色いかっこ（[ ]）
@@ -7768,6 +8356,16 @@ function tlbarDrawWide(g, W, H) {
   });
   // 映像のない所（先頭の黒など）は、そのまま黒で見える
 
+  // 元のFCPXで、すでに入っていた編集点：カットされた所は「実線（細め）」、ブレード・アングル切り替えだけの所は「点線」
+  if (tlEditsOn && TL.edits) {
+    let lastX = -99;
+    TL.edits.forEach(ed => {
+      const xx = Math.round(x(ed.t)) + 0.5; if (xx < -4 || xx > W + 4 || xx - lastX < 5) return; lastX = xx;
+      g.lineWidth = 1.25; g.beginPath(); g.moveTo(xx, clipsTop); g.lineTo(xx, clipsBottom);
+      if (ed.cut) { g.strokeStyle = 'rgba(255,255,255,0.7)'; g.stroke(); }
+      else { g.strokeStyle = 'rgba(255,255,255,0.5)'; g.setLineDash([2, 3]); g.stroke(); g.setLineDash([]); }
+    });
+  }
   // 編集点：カットして詰めた所は「実線」、ブレードを入れただけの所は「点線」（FCPXと同じ）
   M.forEach(m => {
     const xx = Math.round(x(m.start)) + 0.5; if (xx < -4 || xx > W + 4) return;
@@ -7855,12 +8453,22 @@ function tlbarDrawWide(g, W, H) {
     const tcW = g.measureText(tcTxt).width + 10, tcX = Math.max(2, Math.min(W - tcW - 2, xx + 10));
     g.fillStyle = 'rgba(232,232,238,0.95)'; g.fillRect(tcX, 3, tcW, 16); g.fillStyle = '#111'; g.fillText(tcTxt, tcX + 5, 11.5);
   }
+  if (tlMarquee) {                                       // なぞって選んでいる間の、四角い枠
+    const m = tlMarquee; g.fillStyle = 'rgba(255,214,10,0.12)'; g.fillRect(m.xa, m.ya, m.xb - m.xa, m.yb - m.ya);
+    g.strokeStyle = '#ffd60a'; g.lineWidth = 1.5; g.setLineDash([5, 3]); g.strokeRect(m.xa + 0.5, m.ya + 0.5, m.xb - m.xa, m.yb - m.ya); g.setLineDash([]);
+  }
   // テロップの端を引っ張っている間：端の位置と、長さの変化を、黒い吹き出しで見せる
   if (tlTitleDrag) {
     const d = tlTitleDrag, dur2 = d.live.end - d.live.start, dl = dur2 - (d.e0 - d.s0), edge = d.side === 'start' ? d.live.start : d.live.end;
     const lab = `${d.side === 'start' ? '開始' : '終了'} ${_tlFcpxTc(_tlO2E(edge, M))}　長さ ${dur2.toFixed(2)}秒（${dl >= 0 ? '+' : '−'}${Math.abs(dl).toFixed(2)}）`;
     g.font = 'bold 12px -apple-system, sans-serif'; g.textBaseline = 'middle';
     const tw = g.measureText(lab).width + 16, bx = Math.max(2, Math.min(W - tw - 2, (tlPtr ? tlPtr.x : x(edge)) - tw / 2)), by = titlesBottom + 4;
+    g.fillStyle = 'rgba(18,18,23,0.94)'; g.fillRect(bx, by, tw, 20); g.fillStyle = '#ffd60a'; g.fillText(lab, bx + 8, by + 10.5);
+  }
+  if (tlTitleMove) {                                   // まとめて動かしている間：何個を、何秒動かしたか
+    const d = tlTitleMove, lab = `${d.ids.size > 1 ? d.ids.size + '個のテロップを移動' : 'テロップを移動'}　${d.delta >= 0 ? '+' : '−'}${Math.abs(d.delta).toFixed(2)}秒`;
+    g.font = 'bold 12px -apple-system, sans-serif'; g.textBaseline = 'middle';
+    const tw = g.measureText(lab).width + 16, bx = Math.max(2, Math.min(W - tw - 2, (tlPtr ? tlPtr.x : 40) - tw / 2)), by = titlesBottom + 4;
     g.fillStyle = 'rgba(18,18,23,0.94)'; g.fillRect(bx, by, tw, 20); g.fillStyle = '#ffd60a'; g.fillText(lab, bx + 8, by + 10.5);
   }
   // 残り時間
@@ -7877,7 +8485,7 @@ function _tlUpdateSelFromPlayhead() {
   if (blades.some(b => Math.abs(b - now) < 0.05)) return;   // ブレードを入れた直後は、選択を動かさない
   const seg = tlSegmentAt(now);
   tlSel = seg && seg.bounded && !_tlInCut(now) ? { start: seg.start, end: seg.end } : null;
-  tlSels = []; tlSelAnchor = tlSel;
+  tlSels = []; tlSelAnchor = tlSel; if (tlSel) _selKind = 'clip';
 }
 
 // ── マルチカムのアングル切り替え（1〜9キー）。映像だけを切り替え、音声はそのまま ──────────
@@ -8017,12 +8625,95 @@ function tlMultiClick(ev, t) {
     else { list = cur.concat(piece); primary = list[list.length - 1]; tlSelAnchor = piece; }
     if (!tlSelAnchor && list.length) tlSelAnchor = list[0];
   }
-  tlSels = list.length > 1 ? list : []; tlSel = primary || null;
+  tlSels = list.length > 1 ? list : []; tlSel = primary || null; _selKind = 'clip';
   if (list.length > 1) { const tot = list.reduce((a, p) => a + (p.end - p.start), 0); tlbarHint(`${list.length}個のクリップを選びました（合計${tot.toFixed(1)}秒）。Deleteで削除、⇧Deleteでギャップ、1〜9でアングル切り替え。⌘クリックで追加・外す、⇧クリックで範囲`); }
   tlbarDraw();
 }
+// ── マーキング：選んだものに、Mで、印をつける／外す ──────────
+// テロップを選んでいれば、そのテロップに。クリップ・I/Oの範囲を選んでいれば、その範囲に。何も選んでいなければ、再生位置に（FCPXのマーカーと同じ）
+function tlMarkKey() {
+  if (!TL) return;
+  const before = _cutState();
+  let msg = '';
+  const picked = entries.filter(e => selectedIds.has(e.id));
+  if (picked.length) {
+    const all = picked.every(e => e._mark);
+    picked.forEach(e => { if (all) delete e._mark; else e._mark = 1; });
+    msg = all ? `${picked.length}個のテロップの印を、外しました` : `${picked.length}個のテロップに、印をつけました（⚑）。Mで、外せます`;
+    refreshRowClasses();
+  } else {
+    let a = null, b = null;
+    if (tlRange && tlRange.end != null && tlRange.end - tlRange.start > 0.05) { a = tlRange.start; b = tlRange.end; }
+    else { const sel = tlSelList(); if (sel.length) { a = Math.min(...sel.map(p => p.start)); b = Math.max(...sel.map(p => p.end)); } }
+    const near = (m, t) => Math.abs(m.start - t) < 0.05 && (b == null || Math.abs(m.end - b) < 0.05);
+    const t = b == null ? Math.round(tlNow() * 100) / 100 : a;
+    const hit = tlMarks.findIndex(m => b == null ? (m.end == null || m.end === m.start) && Math.abs(m.start - t) < 0.15 : near(m, a));
+    if (hit >= 0) { tlMarks.splice(hit, 1); msg = '印を、外しました'; }
+    else { tlMarks.push(b == null ? { start: t, end: t } : { start: a, end: b }); tlMarks.sort((x, y) => x.start - y.start); msg = b == null ? `再生位置（${_tlTc(t)}）に、印をつけました（⚑）。Mで、外せます` : `選んだ範囲（${(b - a).toFixed(1)}秒）に、印をつけました（⚑）。Mで、外せます`; }
+  }
+  if (_cutState() !== before) { _cutUndo.push(before); if (_cutUndo.length > 100) _cutUndo.shift(); _cutRedo.length = 0; scheduleAutosave(); scheduleTimelineRecordSave(); }
+  tlbarHint(msg); tlbarDraw();
+}
+// ── テロップを、ブレードで切る（再生位置で、2つに分ける） ──────────
+const _splitLog = new Map(), _entArchive = new Map();      // 分割を、元に戻す・やり直すための記録
+let _selKind = 'clip';       // 最後に選んだのが、テロップか、クリップか（Deleteが、どちらに効くか）
+function tlDeleteTelops() {
+  const del = entries.filter(e => selectedIds.has(e.id));
+  if (!del.length) { toast('削除するテロップが、選ばれていません', 'info'); return; }
+  if (del.length >= 10 && !confirm(`${del.length}個のテロップを、削除します。\n\nよろしいですか？（⌘Zで戻せます）`)) return;
+  del.forEach(e => _entArchive.set(e.id, e));
+  entries = entries.filter(e => !selectedIds.has(e.id));
+  if (!entries.some(e => e.id === activeId)) activeId = null;
+  selectedIds.clear(); _selKind = 'clip';
+  render(); scheduleAutosave(); tlbarHint(`テロップを ${del.length}個、削除しました。⌘Zで戻せます`); tlbarDraw();
+}
+function tlDeleteKey(gapMode) {                             // 最後に選んだものを、消す：テロップなら、テロップ。クリップ・範囲なら、そちら
+  if (_selKind === 'telop' && selectedIds.size) tlDeleteTelops(); else tlDeleteSel(gapMode);
+}
+function tlSplitTelops(list, t) {
+  let n = 0;
+  list.slice().forEach(e => {
+    const s0 = timeToMs(e.start) / 1000, e0 = timeToMs(e.end) / 1000;
+    if (!(t > s0 + 0.05 && t < e0 - 0.05)) return;
+    const spk = (String(e.text || '').match(/^(\[[^\]]+\])/) || [''])[0], body = String(e.text || '').slice(spk.length);
+    let text1 = null, text2 = null, w1 = null, w2 = null;
+    if (e._words && e._words.length >= 2 && e._words.map(w => w.w).join('').replace(/\s/g, '') === body.replace(/\s/g, '')) {
+      let cut = e._words.findIndex(w => w.s >= t - 0.001);        // 単語の時間が分かっているときは、再生位置にいちばん近い単語の区切りで、切る
+      if (cut > 0 && cut < e._words.length) {
+        w1 = e._words.slice(0, cut); w2 = e._words.slice(cut);
+        text1 = w1.map(w => w.w).join(''); text2 = w2.map(w => w.w).join('');
+      }
+    }
+    if (text1 == null) {                                           // 単語の時間がないとき（SRTなど）：時間の割合で、文字を分ける。近くに句読点・空白があれば、そこで切る
+      const chars = [...body]; if (chars.length < 2) return;
+      let k = Math.round(chars.length * (t - s0) / (e0 - s0)); k = Math.max(1, Math.min(chars.length - 1, k));
+      const isBrk = c => /[、。，．！？!?\s　]/.test(c);
+      for (let d = 0; d <= 3; d++) {
+        const cand = [k - d, k + d].find(p => p >= 1 && p <= chars.length - 1 && (isBrk(chars[p - 1]) || isBrk(chars[p])));
+        if (cand != null) { k = cand; break; }
+      }
+      text1 = chars.slice(0, k).join('').trimEnd(); text2 = chars.slice(k).join('').trimStart();
+      if (!text1 || !text2) return;
+    }
+    const ts = msToTime(Math.round(t * 1000)), oldText = e.text, oldWords = e._words || null;
+    const ne = { ...e, id: nextId++, start: ts, end: e.end, text: spk + text2, _words: w2 || null };
+    delete ne._ai;
+    e.end = ts; e.text = spk + text1; e._words = w1 || (e._words ? null : undefined); if (e._words === undefined) delete e._words;
+    entries.splice(entries.indexOf(e) + 1, 0, ne);
+    _splitLog.set(ne.id, { origId: e.id, origText: oldText, origWords: oldWords, firstText: e.text, firstWords: e._words || null });
+    n++;
+  });
+  if (n) { render(); scheduleAutosave(); }
+  return n;
+}
 function tlBlade() {
   if (!TL) return;
+  {                                                    // テロップも、いっしょに切る：テロップを選んでいれば、選んだものだけ。選んでいなければ、再生位置にある、すべてのテロップ
+    const picked = entries.filter(e => selectedIds.has(e.id));
+    const n = tlSplitTelops(picked.length ? picked : entries, tlNow());
+    if (n) toast(`✂ テロップを ${n}個、分割しました（⌘Zで戻せます）`, 'ok');
+    if (picked.length && n) { tlbarDraw(); return; }
+  }
   const t = Math.round(tlNow() * 100) / 100;
   if (t <= 0.05 || t >= TL.duration - 0.05) { toast('先頭・末尾にはブレードを入れられません', 'info'); return; }
   if (blades.some(b => Math.abs(b - t) < 0.05)) return;
@@ -8159,7 +8850,7 @@ function tlbarInit() {
   blades = []; tlSel = null; tlOpenCut = null;
   try { const w = localStorage.getItem('tl_wide'); tlToggleWide(w === null ? true : w === '1'); } catch (e) { tlToggleWide(true); }   // 初めて開く端末・URLでは、カットモードから始める
   tlLoadWaveform();
-  tlGaps = []; tlRange = null; tlSnapGuide = null; tlAngles = []; tlSels = []; tlSelAnchor = null; _tlAngleUiKey = '';
+  tlGaps = []; tlRange = null; tlSnapGuide = null; tlAngles = []; tlSels = []; tlSelAnchor = null; tlMarks = []; _tlAngleUiKey = '';
   { const sb = document.getElementById('tl-snap-btn'); if (sb) sb.textContent = tlSnapOn ? '🧲 スナップ：入' : '🧲 スナップ：切'; }
   mcCutRawSpeech = []; _cutUndo.length = 0; _cutRedo.length = 0;
   tlView = { start: 0, span: Math.min(TL.duration, 120) };
@@ -8191,7 +8882,7 @@ function tlbarInit() {
     let trim = null;
     const cutWide = () => document.body.classList.contains('cut-wide');
     // テロップ（紫のバー）の、端・中を、つかめる位置にあるか
-    let tTrim = null;
+    let tTrim = null, tMove = null, tMarq = null;
     const titleEdgeAt = (ev) => {
       if (!TL || !TL._tHits) return null;
       const r = cv.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
@@ -8213,6 +8904,91 @@ function tlbarInit() {
       tlTitleHover = null; dragging = false; tlHoverB = null; cv.style.cursor = 'ew-resize';
       tlPtr = { x: ev.clientX - r.left, y: ev.clientY - r.top };
       setActiveEntry(en.id); cv.setPointerCapture(ev.pointerId); tlbarDraw();
+    };
+    // 本体をつかんだ：選ばれているテロップを、まとめて動かす（動かさずに離したら、ふつうのクリック）
+    const startTitleMove = (ev, en) => {
+      const M = _tlMerged(), r = cv.getBoundingClientRect(), te = tlView.start + (ev.clientX - r.left) / r.width * tlView.span;
+      const sel = entries.filter(e => selectedIds.has(e.id));
+      const s0s = sel.map(e => timeToMs(e.start) / 1000), e0s = sel.map(e => timeToMs(e.end) / 1000);
+      tMove = { en, M, x0: ev.clientX, clickT: _tlE2O(Math.max(0, te), M), a0: timeToMs(en.start) / 1000, b0: timeToMs(en.end) / 1000,
+                minS: Math.min(...s0s), maxE: Math.max(...e0s), skip: s0s.concat(e0s), before: _cutState(), active: false, ids: new Set(sel.map(e => e.id)), delta: 0 };
+      cv.setPointerCapture(ev.pointerId);
+    };
+    const moveTitleMove = (ev) => {
+      const t = tMove, r = cv.getBoundingClientRect(), M = t.M;
+      tlPtr = { x: ev.clientX - r.left, y: ev.clientY - r.top };
+      if (!t.active) { if (Math.abs(ev.clientX - t.x0) <= 4) return; t.active = true; cv.style.cursor = 'grabbing'; tlHoverB = null; tlTitleHover = null; }
+      let delta = _tlE2O(_tlO2E(t.a0, M) + (ev.clientX - t.x0) / r.width * tlView.span, M) - t.a0;
+      const clamp = d => Math.max(-t.minS, Math.min(TL.duration - t.maxE, d));
+      delta = clamp(delta);
+      // 吸い付き：つかんだテロップの、始まり・終わりを、再生位置・ほかの字幕・編集点に合わせる
+      const now = tlNow(), pxOf = sec => Math.abs(_tlO2E(sec, M) - _tlO2E(now, M)) / tlView.span * r.width;
+      const s = t.a0 + delta, e = t.b0 + delta;
+      let snapDelta = null, guide = null;
+      if (tlSnapOn) {
+        if (pxOf(s) <= 8) { snapDelta = now - t.a0; guide = now; }
+        else if (pxOf(e) <= 8) { snapDelta = now - t.b0; guide = now; }
+        else {
+          const sa = tlSnapNear(s, null, t.skip), sb = tlSnapNear(e, null, t.skip);
+          if (sa && (!sb || sa.d <= sb.d)) { snapDelta = sa.t - t.a0; guide = sa.t; }
+          else if (sb) { snapDelta = sb.t - t.b0; guide = sb.t; }
+        }
+      }
+      if (snapDelta != null) delta = clamp(snapDelta);
+      tlSnapGuide = snapDelta != null ? guide : null;
+      t.delta = Math.round(delta * 1000) / 1000;
+      tlTitleMove = { ids: t.ids, delta: t.delta };
+      video.currentTime = Math.max(0, Math.min(TL.duration, t.a0 + t.delta));
+      tlbarDraw();
+    };
+    const endTitleMove = () => {
+      const t = tMove; tMove = null; tlSnapGuide = null; cv.style.cursor = '';
+      if (!t.active) { tlTitleMove = null; video.currentTime = Math.max(0, Math.min(TL.duration, t.clickT)); tlbarDraw(); return; }    // 動かさなかった：ふつうのクリック（再生位置を、そこへ）
+      const d = t.delta; tlTitleMove = null;
+      if (Math.abs(d) >= 0.0005) {
+        let changed = false;
+        entries.forEach(e => { if (t.ids.has(e.id)) { e.start = msToTime(Math.round(timeToMs(e.start) + d * 1000)); e.end = msToTime(Math.round(timeToMs(e.end) + d * 1000)); changed = true; } });
+        if (changed) {
+          _cutUndo.push(t.before); if (_cutUndo.length > 100) _cutUndo.shift(); _cutRedo.length = 0;
+          const sorted = entries.every((e, i) => i === 0 || timeToMs(entries[i - 1].start) <= timeToMs(e.start));
+          if (!sorted) { entries.sort((a, b) => timeToMs(a.start) - timeToMs(b.start)); render(); }
+          else t.ids.forEach(id => updateEntryDOM(id));
+          updateActiveTiming(); scheduleAutosave();
+          tlbarHint(`${t.ids.size}個のテロップを、${d >= 0 ? '後ろへ' : '前へ'} ${Math.abs(d).toFixed(2)}秒 動かしました。⌘Zで戻せます`);
+        }
+      }
+      tlbarDraw();
+    };
+    // テロップの段の、空いている所から、なぞる：四角い枠に触れたテロップを、まとめて選ぶ（⌘・⇧を押していると、いまの選びに追加）
+    const inTitleBand = (ev) => { if (!TL || !TL._tBand) return false; const py = ev.clientY - cv.getBoundingClientRect().top; return py >= TL._tBand.y0 && py <= TL._tBand.y1; };
+    const startMarquee = (ev) => {
+      const r = cv.getBoundingClientRect(), x = ev.clientX - r.left, M = _tlMerged();
+      tMarq = { x0: x, y0: ev.clientY - r.top, add: ev.metaKey || ev.shiftKey, base: new Set(selectedIds), moved: false, t: _tlE2O(Math.max(0, tlView.start + x / r.width * tlView.span), M) };
+      cv.setPointerCapture(ev.pointerId);
+    };
+    const moveMarquee = (ev) => {
+      const r = cv.getBoundingClientRect(), m = tMarq, x1 = Math.max(0, Math.min(r.width, ev.clientX - r.left)), y1 = Math.max(0, Math.min(r.height, ev.clientY - r.top));
+      tlPtr = { x: ev.clientX - r.left, y: ev.clientY - r.top };
+      if (!m.moved && Math.abs(x1 - m.x0) < 4 && Math.abs(y1 - m.y0) < 4) return;
+      m.moved = true; _selKind = 'telop'; cv.style.cursor = 'crosshair';
+      const xa = Math.min(m.x0, x1), xb = Math.max(m.x0, x1), ya = Math.min(m.y0, y1), yb = Math.max(m.y0, y1);
+      tlMarquee = { xa, xb, ya, yb };
+      const sel = m.add ? new Set(m.base) : new Set();
+      (TL._tHits || []).forEach(h => { if (h.xb >= xa && h.xa <= xb && h.y + h.h >= ya && h.y <= yb) sel.add(h.en.id); });
+      selectedIds.clear(); sel.forEach(id => selectedIds.add(id));
+      refreshRowClasses(); tlbarDraw();
+    };
+    const endMarquee = () => {
+      const m = tMarq; tMarq = null; tlMarquee = null; cv.style.cursor = '';
+      if (!m.moved) {                                      // なぞらずに離した：ふつうのクリック（選びを外して、再生位置を、そこへ）
+        if (!m.add) { selectedIds.clear(); refreshRowClasses(); if (typeof updateButtons === 'function') updateButtons(); }
+        video.currentTime = Math.max(0, Math.min(TL.duration, m.t));
+      } else {
+        if (selectedIds.size && !selectedIds.has(activeId)) setActiveEntry([...selectedIds][0]);
+        if (typeof updateButtons === 'function') updateButtons();
+        tlbarHint(selectedIds.size ? `${selectedIds.size}個のテロップを選びました。ドラッグで、まとめて動かせます（⌘クリックで追加・外す、Escで選びを外す）` : 'テロップは、選ばれていません');
+      }
+      tlbarDraw();
     };
     const moveTitleTrim = (ev) => {
       const t = tTrim, r = cv.getBoundingClientRect(), M = t.M;
@@ -8269,7 +9045,20 @@ function tlbarInit() {
       if (cutWide()) {                                   // テロップの端をつかんだ：伸び縮み。中をクリック：そのテロップを選ぶ
         const th = titleEdgeAt(ev);
         if (th && th.side) { startTitleTrim(ev, th); return; }
-        if (th) { setActiveEntry(th.en.id); try { const row = document.querySelector(`.entry[data-id="${th.en.id}"]`); if (row) row.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+        if (th) {                                          // テロップの中：⌘クリック＝選びに追加・外す、⇧クリック＝範囲、ふつうのクリック＝選ぶ（そのままドラッグで、まとめて動かす）
+          const id = th.en.id;
+          if (ev.metaKey) { selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id); }
+          else if (ev.shiftKey && activeId != null) {
+            const i0 = entries.findIndex(e => e.id === activeId), i1 = entries.findIndex(e => e.id === id);
+            if (i0 >= 0 && i1 >= 0) for (let i = Math.min(i0, i1); i <= Math.max(i0, i1); i++) selectedIds.add(entries[i].id);
+          } else if (!selectedIds.has(id)) { selectedIds.clear(); selectedIds.add(id); }
+          _selKind = 'telop'; setActiveEntry(id); refreshRowClasses(); if (typeof updateButtons === 'function') updateButtons();
+          try { const row = document.querySelector(`.entry[data-id="${id}"]`); if (row) row.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+          if (selectedIds.size > 1) tlbarHint(`${selectedIds.size}個のテロップを選びました。ドラッグで、まとめて動かせます（⌘クリックで追加・外す、⇧クリックで範囲）`);
+          if (ev.metaKey || ev.shiftKey) { tlbarDraw(); return; }
+          startTitleMove(ev, th.en); tlbarDraw(); return;
+        }
+        if (!th && inTitleBand(ev)) { startMarquee(ev); return; }
       }
       if (cutWide()) {
         const hit = boundaryAt(ev);
@@ -8300,6 +9089,8 @@ function tlbarInit() {
     cv.addEventListener('pointermove', ev => {
       { const r0 = cv.getBoundingClientRect(); tlPtr = { x: ev.clientX - r0.left, y: ev.clientY - r0.top }; }
       if (tTrim && TL) { moveTitleTrim(ev); return; }
+      if (tMove && TL) { moveTitleMove(ev); return; }
+      if (tMarq && TL) { moveMarquee(ev); return; }
       if (trim && TL) {
         const r = cv.getBoundingClientRect(), dx = (ev.clientX - trim.x0) / r.width * tlView.span;
         if (trim.mode === 'blade') {                                           // ブレードの位置を動かす（スナップつき）
@@ -8335,6 +9126,9 @@ function tlbarInit() {
         const th = titleEdgeAt(ev), key = th && th.side ? th.en.id + th.side : '', cur = tlTitleHover ? tlTitleHover.en.id + tlTitleHover.side : '';
         if (key !== cur) { tlTitleHover = th && th.side ? { en: th.en, side: th.side } : null; cv.style.cursor = tlTitleHover ? 'ew-resize' : ''; tlbarDraw(); }
         if (tlTitleHover) { tlHoverB = null; return; }
+        if (th) { cv.style.cursor = 'grab'; tlHoverB = null; return; }                         // テロップの中：つかんで動かせる
+        if (inTitleBand(ev)) { cv.style.cursor = 'crosshair'; tlHoverB = null; return; }       // テロップの段の、空いている所：なぞって選べる
+        if (cv.style.cursor === 'grab' || cv.style.cursor === 'crosshair') cv.style.cursor = '';
       }
       if (TL && cutWide()) {         // マウスを近づけたとき：つかめる切れ目を光らせる
         const hit = boundaryAt(ev), key = hit ? `${hit.head ? 'h' : hit.tail ? 't' : hit.t}:${hit.side}` : '';
@@ -8346,6 +9140,8 @@ function tlbarInit() {
     cv.addEventListener('pointerleave', () => { if (tlTitleHover && !tTrim) { tlTitleHover = null; cv.style.cursor = ''; tlbarDraw(); } if (!trim && tlHoverB) { tlHoverB = null; cv.style.cursor = ''; tlbarDraw(); } });
     cv.addEventListener('pointerup', () => {
       if (tTrim) { endTitleTrim(); return; }
+      if (tMove) { endTitleMove(); return; }
+      if (tMarq) { endMarquee(); return; }
       if (trim && trim.mode === 'blade') {
         blades.sort((a, b) => a - b);
         if (_cutState() !== trim.before) { _cutUndo.push(trim.before); _cutRedo.length = 0; }
@@ -8411,7 +9207,7 @@ function tlbarInit() {
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
       if (document.querySelector('.modal-overlay.open, .modal-overlay[style*="flex"]')) return;
       if (ev.key === 'b' || ev.key === 'B') { ev.preventDefault(); tlBlade(); }
-      else if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); tlDeleteSel(ev.shiftKey); }
+      else if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); tlDeleteKey(ev.shiftKey); }
     });
   });
 })();
@@ -8420,6 +9216,7 @@ function tlbarInit() {
 function tlBoundaries() {
   const pts = new Set([0, TL.duration]);
   blades.forEach(b => pts.add(b));
+  tlMarks.forEach(m => { pts.add(m.start); if (m.end > m.start) pts.add(m.end); });
   _tlMerged().forEach(m => { pts.add(m.start); pts.add(m.end); });
   TL.segs.forEach(sg => pts.add(sg.t0));
   entries.forEach(e => pts.add(timeToMs(e.start) / 1000));
@@ -8452,7 +9249,8 @@ document.addEventListener('keydown', ev => {
     case 'End':  stop(); video.currentTime = TL.duration; break;
     case 'i': case 'I': { stop(); const t = Math.round(tlNow() * 100) / 100; tlRange = { start: t, end: (tlRange && tlRange.end != null && tlRange.end > t) ? tlRange.end : null }; tlbarDraw(); break; }          // 範囲の始まり
     case 'o': case 'O': { stop(); const t = Math.round(tlNow() * 100) / 100; if (!tlRange) tlRange = { start: 0, end: t }; else if (t > tlRange.start) tlRange.end = t; else tlRange = { start: t, end: tlRange.start }; tlbarDraw(); break; }   // 範囲の終わり
-    case 'Escape': stop(); tlRange = null; tlSel = null; tlSnapGuide = null; tlbarDraw(); break;
+    case 'Escape': stop(); tlRange = null; tlSel = null; tlSels = []; tlSnapGuide = null; if (selectedIds.size) { selectedIds.clear(); refreshRowClasses(); if (typeof updateButtons === 'function') updateButtons(); } tlbarDraw(); break;
+    case 'm': case 'M': stop(); tlMarkKey(); break;                                      // 選んだものに、印をつける／外す
     case 'n': case 'N': stop(); tlToggleSnap(); break;
     case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': if (TL.mcs && TL.mcs.length) { stop(); tlSetAngle(+ev.key - 1); } break;
     case 'Enter': stop(); break;                                                       // 字幕の時刻を、うっかり変えてしまわないよう、カットモードでは無効にする
@@ -8466,13 +9264,14 @@ document.addEventListener('keydown', ev => {
   if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) || (document.activeElement && document.activeElement.isContentEditable)) return;
   if (document.querySelector('.modal-overlay.open, .modal-overlay[style*="flex"]')) return;
   if (ev.key === 'b' || ev.key === 'B') { ev.preventDefault(); tlBlade(); }
+  else if (ev.key === 'a' || ev.key === 'A') { ev.preventDefault(); _selKind = 'telop'; entries.forEach(e => selectedIds.add(e.id)); refreshRowClasses(); if (typeof updateButtons === 'function') updateButtons(); tlbarHint(`すべてのテロップ（${entries.length}個）を選びました。ドラッグで、まとめて動かせます`); tlbarDraw(); }
   else if (ev.key === '=' || ev.key === '+') { ev.preventDefault(); tlZoom(1.6); }
   else if (ev.key === '-' || ev.key === '_') { ev.preventDefault(); tlZoom(1 / 1.6); }
 }, true);
 
 // ── スナップ（編集点・ギャップ・字幕の始まりと終わりに、吸い付く。Nキーで、オン・オフ） ──────────
 function _snapCands(exclCut) {
-  const c = [0, TL.duration, ...blades, ...tlGaps.flatMap(g => [g.start, g.end])];
+  const c = [0, TL.duration, ...(tlEditsOn && TL.edits ? TL.edits.map(e => e.t) : []), ...blades, ...tlGaps.flatMap(g => [g.start, g.end]), ...tlMarks.flatMap(m => m.end > m.start ? [m.start, m.end] : [m.start])];
   _tlMerged().forEach(m => { if (!exclCut || (Math.abs(m.start - exclCut.start) > 1e-6 && Math.abs(m.end - exclCut.end) > 1e-6)) c.push(m.start, m.end); });
   entries.forEach(e => c.push(timeToMs(e.start) / 1000, timeToMs(e.end) / 1000));
   return c;
@@ -8481,8 +9280,13 @@ function tlSnapNear(t, exclCut, skipSelf) {
   if (!tlSnapOn || !TL) return null;
   const cv = document.getElementById('tlbar'), thr = 10 / (cv ? cv.clientWidth || 800 : 800) * tlView.span;
   let best = null, bd = thr;
-  _snapCands(exclCut).forEach(c => { if (skipSelf != null && Math.abs(c - skipSelf) < 1e-6) return; const d = Math.abs(c - t); if (d < bd) { bd = d; best = c; } });
+  _snapCands(exclCut).forEach(c => { if (skipSelf != null && (Array.isArray(skipSelf) ? skipSelf.some(v => Math.abs(c - v) < 1e-6) : Math.abs(c - skipSelf) < 1e-6)) return; const d = Math.abs(c - t); if (d < bd) { bd = d; best = c; } });
   return best == null ? null : { t: best, d: bd };
+}
+function tlToggleEdits() {
+  tlEditsOn = !tlEditsOn; try { localStorage.setItem('tl_edits', tlEditsOn ? '1' : '0'); } catch (e) {}
+  const b = document.getElementById('tl-edits-btn'); if (b) { b.classList.toggle('on', tlEditsOn); b.textContent = tlEditsOn ? '┆ 元の編集点：表示' : '┆ 元の編集点：非表示'; }
+  tlbarDraw();
 }
 function tlToggleSnap() {
   tlSnapOn = !tlSnapOn; try { localStorage.setItem('tl_snap', tlSnapOn ? '1' : '0'); } catch (e) {}
@@ -8493,13 +9297,30 @@ function tlToggleSnap() {
 // ── カット操作の「元に戻す」（⌘Z）／「やり直す」（⇧⌘Z） ──────────
 const _cutUndo = [], _cutRedo = [];
 function _cutState() {
-  return JSON.stringify({ c: manualCuts, b: blades, g: tlGaps, an: tlAngles, et: entries.map(e => [e.id, e.start, e.end]), ai: entries.filter(e => e._ai).map(e => [e.id, e._ai]) });
+  return JSON.stringify({ c: manualCuts, b: blades, g: tlGaps, an: tlAngles, et: entries.map(e => [e.id, e.start, e.end, e._mark ? 1 : 0]), ids: entries.map(e => e.id), mk: tlMarks, ai: entries.filter(e => e._ai).map(e => [e.id, e._ai]) });
 }
 function _cutRestore(str) {
   const st = JSON.parse(str);
   manualCuts = st.c; blades = st.b; tlGaps = st.g || []; tlSel = null; tlOpenCut = null; tlRange = null;
+  tlMarks = st.mk || [];
   { const an = JSON.stringify(st.an || []); if (an !== JSON.stringify(tlAngles)) { tlAngles = st.an || []; tlRebuildSegs(); } }
-  if (st.et) { const et = new Map(st.et.map(t => [t[0], t])); entries.forEach(e => { const t = et.get(e.id); if (t) { e.start = t[1]; e.end = t[2]; } }); }
+  if (st.ids) {                                           // テロップの分割を、元に戻す／やり直す（増えた・減ったテロップを合わせる）
+    const want = new Set(st.ids), have = new Set(entries.map(e => e.id));
+    entries.filter(e => !want.has(e.id)).forEach(e => {
+      const lg = _splitLog.get(e.id);
+      if (lg) { const o = entries.find(x => x.id === lg.origId); if (o) { o.text = lg.origText; o._words = lg.origWords; } }
+      _entArchive.set(e.id, e);
+      selectedIds.delete(e.id); if (activeId === e.id) activeId = null;
+    });
+    entries = entries.filter(e => want.has(e.id));
+    st.ids.forEach(id => {
+      if (have.has(id)) return;
+      const a = _entArchive.get(id), lg = _splitLog.get(id); if (!a) return;
+      if (lg) { const o = entries.find(x => x.id === lg.origId); if (o) { o.text = lg.firstText; o._words = lg.firstWords; } }
+      entries.push(a);
+    });
+  }
+  if (st.et) { const et = new Map(st.et.map(t => [t[0], t])); entries.forEach(e => { const t = et.get(e.id); if (t) { e.start = t[1]; e.end = t[2]; if (t[3]) e._mark = 1; else delete e._mark; } }); entries.sort((a, b) => timeToMs(a.start) - timeToMs(b.start)); }
   const ai = new Map(st.ai);
   entries.forEach(e => { if (ai.has(e.id)) e._ai = ai.get(e.id); else delete e._ai; });
   renderCutList(); if (typeof render === 'function') render();
@@ -8511,7 +9332,7 @@ function cutUndo(redo) {
   _cutRestore(from.pop());
   toast(redo ? '↪ やり直しました' : '↩ 元に戻しました', 'ok');
 }
-['tlBlade', 'tlDeleteSel', 'tlClearBlades', 'cutRemove', 'cutRemoveSilence', 'tlApplySilenceCuts', 'toggleCut', 'cutSelected', 'aiKeep', 'aiKeepAll'].forEach(name => {
+['tlBlade', 'tlDeleteSel', 'tlDeleteTelops', 'tlClearBlades', 'cutRemove', 'cutRemoveSilence', 'tlApplySilenceCuts', 'toggleCut', 'cutSelected', 'aiKeep', 'aiKeepAll'].forEach(name => {
   const f = window[name];
   if (typeof f !== 'function') return;
   window[name] = function (...a) {
@@ -8596,11 +9417,13 @@ function _remapCopy(list, pieces) {
 // 「✔ カットを確定」：カットはそのまま残す（編集点は消えない）。あとからでも、編集点を引っ張って、伸ばしたり縮めたりできる
 // 「🎬 XMLを出力」：カットと字幕を反映したXMLを、書き出す（今の画面と字幕は、変えない）
 async function cutRun(noExport) {
+  if (_rbPreview && !noExport) { toast('いまは、並び替えのプレビュー中（確認用）です。書き出しは、「書き出す画面へ」から行ってください', 'info'); rbBackToModal(); return; }
   if (!TL) { toast('先に、FCPXのタイムラインを開いてください', 'info'); return; }
   const tp = document.getElementById('tools-menu-panel'); if (tp) tp.style.display = 'none';
   const ranges = mcCutGetAiRanges();
   if (!_tlRecordXml) { toast('このタイムラインは、カットを実行できません（開き直してください）', 'err'); return; }
-  const name = _tlRecordName || 'タイムライン', base = _tlRecordXml;
+  const name = _tlRecordName || 'タイムライン', base = noExport ? _tlRecordXml : xmlApplyImportedEdits(_tlRecordXml);      // 読み込んだテロップの、消した・直したものを、反映する
+  const newEntries = entries.filter(e => !e._fromXml);                                                              // 読み込んだテロップは、XMLの中に、元のまま残る。新しく足した字幕だけ、あとから入れる
   if (noExport) {
     if (!ranges.length) { toast('カットする範囲がありません', 'info'); return; }
     manualCuts = manualCuts.map(c => c.silence ? { start: c.start, end: c.end } : c);       // 無音のまとまりを、1つずつの編集点にする
@@ -8610,7 +9433,7 @@ async function cutRun(noExport) {
     return;
   }
   if (!ranges.length && !tlGaps.length && !tlAngles.length) {            // カットもギャップもアングルの切り替えもなければ、字幕つきで、そのまま書き出す
-    if (entries.length) cutDoneAsk(base, name, true, 0, 0, entries);
+    if (entries.length) cutDoneAsk(base, name, true, 0, 0, newEntries);
     else toast('カットする範囲がありません。動画の下のバーで、2本指クリックでブレードを入れて、ダブルクリックで削除するか、字幕の行の「✂」を押してください', 'info');
     return;
   }
@@ -8631,11 +9454,11 @@ async function cutRun(noExport) {
       if (k.end > cur) plan.push({ start: cur, duration: k.end - cur, operation: 'keep' });
     });
     mcCutFcpxmlText = base; mcCutFcpxmlBase = name;
-    const xml = convertMulticamTimeline(base, plan, 0);
+    const xml = convertMulticamTimeline(base, plan, 0, undefined, { connected: 'rebuild' });      // 元のテロップ・BGMも、カットに合わせて、付け直す
     const remap = mcCutLastRemap.slice();
-    const hadEntries = entries.length > 0, outEntries = hadEntries ? _remapCopy(entries, remap) : [];
+    const hadEntries = entries.length > 0, outEntries = newEntries.length ? _remapCopy(newEntries, remap) : [];
     const cutSec = baseSec - fcpxmlTimelineSeconds(xml);
-    cutDoneAsk(xml, name, hadEntries, cutSec, entries.length - outEntries.length, outEntries);
+    cutDoneAsk(xml, name, hadEntries, cutSec, newEntries.length - outEntries.length, outEntries);
   } catch (e) {
     console.error(e);
     toast('書き出しの準備に失敗しました: ' + e.message, 'err');
@@ -8650,7 +9473,7 @@ function cutDoneAsk(xml, name, hasSubs, cutSec, dropped, outEntries) {
   const add = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label; b.onclick = () => { document.getElementById('cut-done-modal').style.display = 'none'; fn(); }; box.appendChild(b); return b; };
   const main = hasSubs
     ? add(isRemotePage() ? '🎞 字幕つきで、書き出す（持ち主のMacに保存して、通知）' : '🎞 字幕つきで、FCPXに書き出して開く', 'btn-accent2', () => {
-        try { const r = injectTitlesIntoFcpxml(xml, outEntries || entries, undefined); saveCutFcpxml(r.xml, `${name}_テロップ入り.fcpxml`, true); toast(`${r.count}件のテロップを入れて、書き出しました`, 'ok'); }
+        try { const list = outEntries || entries; if (!list.length) { saveCutFcpxml(xml, `${name}_テロップ入り.fcpxml`, true); toast('テロップを入れて、書き出しました（元のテロップを、そのまま使っています）', 'ok'); return; } const r = injectTitlesIntoFcpxml(xml, list, undefined); saveCutFcpxml(r.xml, `${name}_テロップ入り.fcpxml`, true); toast(`${r.count}件のテロップを入れて、書き出しました`, 'ok'); }
         catch (e) { console.error(e); toast('書き出しに失敗しました: ' + e.message, 'err'); }
       })
     : add('🎬 カット済みを、FCPXに書き出して開く', 'btn-accent2', () => saveCutFcpxml(xml, `${name}_カット済み.fcpxml`, true));
@@ -8736,7 +9559,125 @@ function mcSetVideoAngle(clone, doc, ai) {
   clone.insertBefore(vNode, refNode); clone.insertBefore(aNode, refNode);
   srcs.forEach(c => clone.removeChild(c));
 }
-function convertMulticamTimeline(mcText, cuts, offsetSec, angleOv) {
+// ════════════════════════════════════════════
+//  並び替え（編集指示JSON）：区間を抜き出して、指定の順に並べ直したFCPXMLを書き出す
+//    編集指示：{ "segments": [ { "in": "09:35", "out": "09:47", "label": "フック" }, … ] }（並び順＝新しいタイムラインでの順。リストにない区間は削除。同じ区間を2回使ってもよい）
+// ════════════════════════════════════════════
+// 時間の読み取り："MM:SS"・"HH:MM:SS"・"MM:SS.mmm"・秒（数値）
+function rbParseTime(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : NaN;
+  const t = String(v == null ? '' : v).trim(); if (!t) return NaN;
+  if (/^-?\d+(\.\d+)?$/.test(t)) return parseFloat(t);
+  const m = t.match(/^(?:(\d+):)?(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/);
+  if (!m) return NaN;
+  return (m[1] ? +m[1] * 3600 : 0) + (+m[2]) * 60 + parseFloat(m[3]);
+}
+function rbFmt(sec) { const neg = sec < 0; sec = Math.abs(sec); const m = Math.floor(sec / 60), s = sec - m * 60; return `${neg ? '-' : ''}${m}:${s < 10 ? '0' : ''}${s.toFixed(s % 1 ? 2 : 0)}`; }
+// 元のタイムラインを読み、編集指示を、タイムライン上の区間に直す（検証つき）。実際の書き出しは、rbBuild
+const rbIsCut = x => !!x && (x.cut === true || x.cut === 'true' || x.cut === 1);      // 「カットを推奨」の印がついた区間
+function rbAnalyze(xmlText, planJson, opts) {
+  opts = opts || {};
+  const pad = Math.max(0, +opts.pad || 0);
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('FCPXMLを読み取れませんでした');
+  const CLIPS = ['mc-clip', 'asset-clip', 'clip', 'ref-clip', 'sync-clip'];
+  let spine = null, seq = null;
+  doc.querySelectorAll('project > sequence').forEach(q => { if (spine) return; const sp = q.querySelector('spine'); if (sp && [...sp.children].some(c => CLIPS.includes(c.tagName))) { spine = sp; seq = q; } });
+  if (!spine) throw new Error('クリップを含むタイムラインが見つかりません');
+  const fmt = doc.querySelector(`resources > format[id="${seq.getAttribute('format')}"]`) || doc.querySelector('resources > format');
+  let tb = 6000, fn = 1; const fm = /^(\d+)\/(\d+)s$/.exec((fmt && fmt.getAttribute('frameDuration')) || '');
+  if (fm) { tb = parseInt(fm[2], 10); fn = parseInt(fm[1], 10) || 1; }
+  const T = v => { if (v == null) return 0; v = String(v).trim(); if (v === '0s' || v === '0') return 0; let m = /^(-?\d+)\/(\d+)s$/.exec(v); if (m) return Math.round(parseInt(m[1], 10) * tb / parseInt(m[2], 10)); m = /^(-?\d+(?:\.\d+)?)s$/.exec(v); return m ? Math.round(parseFloat(m[1]) * tb) : 0; };
+  const snap = n => Math.round(n / fn) * fn;
+  // 元のタイムラインの、クリップの並び（素材の先頭を0とした位置を、出す）
+  const base = (opts.timebase || 'source') === 'timeline';
+  const clips = [...spine.children].filter(c => CLIPS.includes(c.tagName) && c.hasAttribute('offset') && c.hasAttribute('duration')).map(el => {
+    const off = T(el.getAttribute('offset')), dur = T(el.getAttribute('duration')), st = T(el.getAttribute('start'));
+    let origin = 0;
+    if (!base) {
+      const ref = el.getAttribute('ref');
+      if (el.tagName === 'asset-clip') { const a = [...doc.querySelectorAll('resources > asset')].find(x => x.getAttribute('id') === ref); origin = a ? T(a.getAttribute('start')) : 0; }
+      else if (el.tagName === 'mc-clip') { const m = [...doc.querySelectorAll('resources > media')].find(x => x.getAttribute('id') === ref), mc = m && m.querySelector('multicam'); origin = mc ? T(mc.getAttribute('tcStart')) : 0; }
+    }
+    // タイムライン時間を使うときは、クリップの位置そのものが、基準になる
+    return { el, tlStart: off, tlEnd: off + dur, srcRelStart: base ? off : st - origin, srcRelEnd: (base ? off : st - origin) + dur };
+  });
+  if (!clips.length) throw new Error('タイムラインのクリップの時間が読み取れませんでした');
+  const matMin = Math.min(...clips.map(c => c.srcRelStart)) / tb, matMax = Math.max(...clips.map(c => c.srcRelEnd)) / tb;
+  let connected = 0; clips.forEach(c => { connected += [...c.el.children].filter(x => x.hasAttribute('lane')).length; });
+  // 編集指示を、読む
+  let plan = typeof planJson === 'string' ? JSON.parse(planJson) : planJson;
+  let list = Array.isArray(plan) ? plan : (plan && plan.segments);
+  if (!Array.isArray(list) || !list.length) throw new Error('編集指示に、segments（区間の一覧）が見つかりません');
+  const cutN = list.filter(rbIsCut).length;
+  if (opts.cutDrop) list = list.filter(x => !rbIsCut(x));                    // 「カット推奨の区間を、削る」ときは、印のついた区間を、外す
+  if (!list.length) throw new Error('すべての区間が、カット推奨になっています。「カット推奨の区間も、残して印だけ付ける」にチェックを入れてください');
+  const errors = [], warnings = [];
+  if (!Array.isArray(plan) && plan.timebase && !['source', 'timeline'].includes(plan.timebase)) warnings.push(`timebase「${plan.timebase}」は、読み取れないため、「source」として扱います`);
+  // 素材の開始位置が、00:00でないとき（例：3600秒始まり）：編集指示が、「素材の先頭＝00:00」の形で、素材の長さに収まっていれば、素材の先頭を00:00として扱う
+  const pre = list.map(x => [rbParseTime(x.in), rbParseTime(x.out)]).filter(q => isFinite(q[0]) && isFinite(q[1]));
+  let sh = 0;
+  if (!base && matMin > 1 && pre.length && pre.every(q => q[0] >= -0.001 && q[1] <= (matMax - matMin) + 0.001) && pre.some(q => q[0] < matMin - 0.001 || q[1] > matMax + 0.001)) {
+    sh = matMin; warnings.push(`素材の開始位置が${rbFmt(matMin)}のため、編集指示の00:00を、素材の先頭（${rbFmt(matMin)}）として扱いました`);
+  }
+  const segs = list.map((x, i) => {
+    const inS = rbParseTime(x.in), outS = rbParseTime(x.out), r = { i: i + 1, label: x.label ? String(x.label) : '', cut: rbIsCut(x), reason: x.reason ? String(x.reason) : '', inS, outS, inA: inS + sh, outA: outS + sh, notes: [], err: null };
+    if (isFinite(inS) && isFinite(outS) && inS < outS) {         // 素材の端を、1秒以内に超えるだけなら、素材の端に合わせる（文字起こしの時間の丸めによる、わずかなずれ）
+      if (r.outA > matMax + 0.001 && r.outA - matMax <= 1.0) { r.notes.push(`終わりが素材より${(r.outA - matMax).toFixed(2)}秒長いため、素材の終わり（${rbFmt(matMax - sh)}）に合わせました`); r.outA = matMax; r.outS = matMax - sh; }
+      if (r.inA < matMin - 0.001 && matMin - r.inA <= 1.0) { r.notes.push(`始まりが素材より${(matMin - r.inA).toFixed(2)}秒早いため、素材の始まり（${rbFmt(matMin - sh)}）に合わせました`); r.inA = matMin; r.inS = matMin - sh; }
+    }
+    if (!isFinite(inS) || !isFinite(outS)) r.err = `時間を読み取れません（in: ${x.in} / out: ${x.out}）`;
+    else if (inS >= outS) r.err = `in が out 以上です（${rbFmt(inS)} 〜 ${rbFmt(outS)}）`;
+    else if (r.outA > matMax + 0.001 || r.inA < matMin - 0.001) r.err = `素材の範囲（${rbFmt(matMin - sh)} 〜 ${rbFmt(matMax - sh)}）を超えています（${rbFmt(inS)} 〜 ${rbFmt(outS)}）`;
+    if (r.err) errors.push(`区間${r.i}${r.label ? '「' + r.label + '」' : ''}：${r.err}`);
+    return r;
+  });
+  // 前後の余白（前の区間の終わり＝次の区間の始まりのように、つながっている端は、足さない）
+  const adj = 0.05;
+  segs.forEach((g, i) => {
+    if (g.err) return;
+    const prev = segs[i - 1], next = segs[i + 1];
+    const padIn = prev && !prev.err && Math.abs(prev.outS - g.inS) <= adj ? 0 : pad, padOut = next && !next.err && Math.abs(g.outS - next.inS) <= adj ? 0 : pad;
+    g.pin = Math.max(matMin, g.inA - padIn); g.pout = Math.min(matMax, g.outA + padOut); g.dur = g.pout - g.pin;
+  });
+  // 重なり（同じ区間の複製は、意図的な場合があるので、許可して、知らせる）
+  for (let i = 0; i < segs.length; i++) for (let j = i + 1; j < segs.length; j++) {
+    const a = segs[i], b = segs[j]; if (a.err || b.err) continue;
+    const ov = Math.min(a.outS, b.outS) - Math.max(a.inS, b.inS);
+    if (ov > 0.001) { a.notes.push(`区間${b.i}と重なっています（${ov.toFixed(1)}秒）`); b.notes.push(`区間${a.i}と重なっています（${ov.toFixed(1)}秒）`); }
+  }
+  // タイムライン上の区間に直す（元のクリップをまたぐときは、クリップごとに切り出す）
+  const keeps = [];
+  segs.forEach(g => {
+    if (g.err) return;
+    let first = true;
+    clips.forEach(c => {
+      const a = Math.max(Math.round(g.pin * tb), c.srcRelStart), b = Math.min(Math.round(g.pout * tb), c.srcRelEnd);
+      if (b <= a) return;
+      const sa = snap(c.tlStart + (a - c.srcRelStart)), sb = snap(c.tlStart + (b - c.srcRelStart));
+      if (sb <= sa) return;
+      keeps.push({ start: sa / tb, duration: (sb - sa) / tb, operation: 'keep', label: first ? g.label : '', seg: g.i, cut: g.cut, reason: g.reason, first }); first = false;
+    });
+    if (first) { g.err = '元のタイムラインに、この区間の映像がありません'; errors.push(`区間${g.i}：${g.err}`); }
+  });
+  const total = keeps.reduce((a, k) => a + k.duration, 0);
+  if (clips.length > 1) warnings.push(`元のタイムラインは、${clips.length}個のクリップに分かれています。素材の順番どおり（未編集）の前提で、区間を切り出します`);
+  const infos = []; if (cutN && !opts.cutDrop) infos.push(`カットを推奨する区間が${cutN}個あります（削らずに残して、印を付けます）`); if (cutN && opts.cutDrop) infos.push(`カットを推奨する区間${cutN}個を、削りました`);
+  if (connected) infos.push(`接続クリップ（テロップ・BGMなど）${connected}個を、並び替えた各区間の位置に合わせて、付け直します`);
+  const projName = (seq.parentElement && seq.parentElement.getAttribute('name')) || 'timeline';
+  const cutSec = keeps.filter(k => k.cut).reduce((t, k) => t + k.duration, 0);
+  return { segs, keeps, total, cutN, cutSec, errors, warnings, infos, connected, projName, matMin: matMin - sh, matMax: matMax - sh, tb, fn };
+}
+// 実際に、並べ替えたFCPXMLを、作る
+function rbBuild(xmlText, a, opts) {
+  opts = opts || {};
+  if (a.errors.length) throw new Error('エラーがあります：' + a.errors[0]);
+  const xml = xmlText;
+  const keepsForConv = a.keeps.map(k => ({ start: k.start, duration: k.duration, operation: 'keep', cut: !!k.cut, label: k.cut ? (k.first ? `✂ カット推奨：${k.label || ''}${k.reason ? '（' + k.reason + '）' : ''}` : '') : k.label }));
+  return convertMulticamTimeline(xml, keepsForConv, 0, [], { eventName: '並び替え', projectName: `${a.projName}_並び替え`, markers: opts.markers !== false, connected: 'rebuild' });
+}
+
+function convertMulticamTimeline(mcText, cuts, offsetSec, angleOv, naming) {
   if (angleOv === undefined) angleOv = (typeof TL !== 'undefined' && TL) ? tlAngles : [];
   const doc = new DOMParser().parseFromString(mcText, 'application/xml');
   if (doc.querySelector('parsererror')) throw new Error('fcpxmlの解析に失敗');
@@ -8796,12 +9737,22 @@ function convertMulticamTimeline(mcText, cuts, offsetSec, angleOv) {
     segs.push({ tlStart: off, tlEnd: off+dur, srcStart: st, el: mc });
   });
   segs.sort((a,b) => a.tlStart - b.tlStart);
+  // 接続クリップ（lane付きのテロップ・BGMなど）：元のタイムライン上の絶対の位置で持っておき、各断片に、重なる分だけ、付け直す
+  // （親クリップの範囲から、はみ出して付いているものも、正しい位置に出る）
+  const rebuildConn = !!(naming && naming.connected === 'rebuild'), connItems = [];
+  if (rebuildConn) segs.forEach(sg => {
+    [...sg.el.children].filter(c => c.hasAttribute('lane')).forEach(c => {
+      const absS = sg.tlStart + (parseTB(c.getAttribute('offset')) - sg.srcStart), absE = absS + parseTB(c.getAttribute('duration'));
+      connItems.push({ el: c, absS, absE, st: c.hasAttribute('start') ? parseTB(c.getAttribute('start')) : null });
+    });
+  });
 
   const keeps = cuts.filter(c => c.operation === 'keep' || c.operation === 'gap');
   if (!keeps.some(c => c.operation === 'keep')) throw new Error('keep区間がありません');
 
   const pieces = [];
   keeps.forEach(k => {
+    let _firstPiece = true;
     const a = snap(((k.start||0)+offsetSec)*tb);
     const b = snap(((k.start||0)+offsetSec+(k.duration||0))*tb);
     if (b <= a) return;
@@ -8817,7 +9768,7 @@ function convertMulticamTimeline(mcText, cuts, offsetSec, angleOv) {
       for (let i = 0; i < pts.length - 1; i++) {
         const u = pts[i], v = pts[i + 1]; if (v <= u) continue;
         let ai = null; ovs.forEach(o => { if ((u + v) / 2 >= o.a && (u + v) / 2 < o.b) ai = o.ai; });
-        pieces.push({ seg: sg, srcStart: (u - sg.tlStart) + sg.srcStart, dur: (v - u), oldStart: u / tb - offsetSec, ai });
+        pieces.push({ seg: sg, srcStart: (u - sg.tlStart) + sg.srcStart, dur: (v - u), oldStart: u / tb - offsetSec, ai, u, v, cut: !!k.cut, label: (naming && (naming.markers || k.cut) && k.label && _firstPiece) ? k.label : null }); _firstPiece = false;
       }
     });
   });
@@ -8830,13 +9781,51 @@ function convertMulticamTimeline(mcText, cuts, offsetSec, angleOv) {
   const clips = [];
   const remapPieces = [];
   const serializer = new XMLSerializer();
+  let tsSeq = 0;
+  // 中身が元のタイムライン上で、つながっている断片は、ひとまとまり（グループ）にする。接続クリップ（テロップ・BGM）は、グループの先頭に付け、グループの終わりまで伸ばす
+  //（カットした所・並び替えた所でだけ切れ、元のクリップの境目では、切らない）
+  { let grp = null, prev = null;
+    pieces.forEach(p => {
+      if (p.gap) { prev = null; return; }
+      if (prev && prev.v === p.u && rebuildConn) { grp.v = p.v; p.head = false; }
+      else { grp = { u: p.u, v: p.v }; p.head = true; p.g = grp; }
+      prev = p;
+    }); }
   pieces.forEach(p => {
     if (p.gap) { clips.push(`<gap name="ギャップ" offset="${timelinePos}/${tb}s" duration="${p.dur}/${tb}s" start="0s"/>`); timelinePos += p.dur; return; }
     const clone = p.seg.el.cloneNode(true);
+    if (rebuildConn) {
+      [...clone.children].filter(c => c.hasAttribute('lane')).forEach(c => clone.removeChild(c));
+      const stopA = new Set(['marker', 'chapter-marker', 'rating', 'keyword', 'analysis-marker', 'audio-channel-source', 'filter-video', 'filter-video-mask', 'filter-audio', 'metadata']);
+      if (p.head) connItems.forEach(it => {
+        const s0 = snap(Math.max(it.absS, p.g.u)), e0 = snap(Math.min(it.absE, p.g.v));
+        if (e0 - s0 < fn) return;
+        const c = it.el.cloneNode(true);
+        c.setAttribute('offset', `${p.srcStart + (s0 - p.u)}/${tb}s`);
+        c.setAttribute('duration', `${e0 - s0}/${tb}s`);
+        if (it.st != null || s0 > it.absS) c.setAttribute('start', `${(it.st || 0) + (s0 - it.absS)}/${tb}s`);
+        const before = [...clone.children].find(x => stopA.has(x.tagName));
+        if (before) clone.insertBefore(c, before); else clone.appendChild(c);
+      });
+    }
     if (p.ai != null) mcSetVideoAngle(clone, doc, p.ai);
+    if (p.label) {                                                 // 並び替えの区間の名前を、マーカーで残す（FCPXで、確認しやすいように）
+      const mk = doc.createElement('marker'); mk.setAttribute('start', `${p.srcStart}/${tb}s`); mk.setAttribute('duration', `${fn}/${tb}s`); mk.setAttribute('value', p.label); if (p.cut) mk.setAttribute('completed', '0');      // カット推奨は、FCPXの「To Do」マーカー（赤）にする
+      const stop = new Set(['audio-channel-source', 'filter-video', 'filter-video-mask', 'filter-audio', 'metadata']);
+      const before = [...clone.children].find(c => stop.has(c.tagName));
+      if (before) clone.insertBefore(mk, before); else clone.appendChild(mk);
+    }
     clone.setAttribute('offset', `${timelinePos}/${tb}s`);
     clone.setAttribute('duration', `${p.dur}/${tb}s`);
     clone.setAttribute('start', `${p.srcStart}/${tb}s`);
+    // 複製したテロップは、文字の書式のID（text-style-def）が重なるので、1つずつ付け直す（重なると、FCPXが「already defined」で、読み込めない）
+    clone.querySelectorAll('text-style-def').forEach(def => {
+      const old = def.getAttribute('id'); if (!old) return;
+      const nid = `${old.replace(/_c\d+$/, '')}_c${++tsSeq}`;
+      def.setAttribute('id', nid);
+      const t = def.closest('title');
+      (t || clone).querySelectorAll('text-style[ref]').forEach(r => { if (r.getAttribute('ref') === old) r.setAttribute('ref', nid); });
+    });
     clips.push(serializer.serializeToString(clone));
     remapPieces.push({ oldStart: p.oldStart, oldEnd: p.oldStart + p.dur / tb, newStart: timelinePos / tb });
     timelinePos += p.dur;
@@ -8856,8 +9845,8 @@ function convertMulticamTimeline(mcText, cuts, offsetSec, angleOv) {
 <fcpxml version="${version}">
     <resources>${resXML}</resources>
     <library>
-        <event name="無音カット済み">
-            <project name="${mcEsc(projName)} (無音カット済み)">
+        <event name="${mcEsc((naming && naming.eventName) || '無音カット済み')}">
+            <project name="${mcEsc((naming && naming.projectName) || (projName + ' (無音カット済み)'))}">
                 <sequence format="${seqFormat}" duration="${timelinePos}/${tb}s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
                     <spine>
 ${clips.join('\n')}
@@ -8943,11 +9932,11 @@ document.getElementById('dict-modal').addEventListener('click', function(e) { if
 //  Toast
 // ════════════════════════════════════════════
 let _toastTimer;
-function toast(msg, kind='info') {
+function toast(msg, kind='info', ms=3500) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.className = `show ${kind}`;
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
 }
 
 // ════════════════════════════════════════════
