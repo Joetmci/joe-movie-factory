@@ -2429,6 +2429,7 @@ function checkRestoreOnLoad() {
 }
 
 async function showRestoreModal() {
+  try { if (sessionStorage.getItem('jmf_go_home')) { sessionStorage.removeItem('jmf_go_home'); return; } } catch (e) {}      // 左上のロゴでトップページに戻ったときは、復元を聞かない
   if (typeof PKG_INFO_P !== 'undefined' && await PKG_INFO_P) { pkgOpenOnStart(); return; }      // 渡す用フォルダで起動したときは、そのタイムラインを開く
   if (!_pendingRestore) {
     // 字幕はまだ無くても、開いていたタイムラインがあれば、開き直せるようにする
