@@ -8380,9 +8380,10 @@ function tlbarDrawWide(g, W, H) {
     cams.forEach(cs => {
       let xx = Math.round(x(cs.t)); if (xx < -30 || xx > W + 4 || xx - lastLine < 3) return; lastLine = xx;
       if (cutXs.has(xx) || cutXs.has(xx - 1) || cutXs.has(xx + 1)) xx += 3;            // カットの線と重なるときは、少し右にずらす
-      const col = TL_ANGLE_COLORS[cs.ai % TL_ANGLE_COLORS.length], lite = _tlLighten(col, 0.45);
-      g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(xx - 2.5, clipsTop, 5, clipH);
-      g.fillStyle = lite; g.fillRect(xx - 1.5, clipsTop, 3, clipH);
+      const col = TL_ANGLE_COLORS[cs.ai % TL_ANGLE_COLORS.length], lite = _tlLighten(col, 0.3);
+      g.fillStyle = '#000'; g.fillRect(xx - 3.5, clipsTop, 7, clipH);                      // 太い線を、黒でふちどる（カットの細い線と見分けやすく）
+      g.fillStyle = lite; g.fillRect(xx - 2.5, clipsTop, 5, clipH);
+      g.fillStyle = 'rgba(255,255,255,0.85)'; for (let yy = clipsTop + HEAD; yy < clipsBottom; yy += 8) g.fillRect(xx - 0.5, yy, 1, 4);   // まん中に白い点線
       const lab = `📷${cs.ai + 1}`, tw = g.measureText(lab).width + 8;
       if (xx - lastTag < tw + 2) return; lastTag = xx;
       g.fillStyle = col; g.fillRect(xx, clipsTop + 1, tw, HEAD - 2);
