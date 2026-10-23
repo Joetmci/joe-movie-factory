@@ -2498,7 +2498,21 @@ function dismissRestore() {
 
 // 2本指の横スワイプなどで「戻る」が働いても、ページから出ないようにする
 try { history.pushState({ jmf: 1 }, '', location.href); window.addEventListener('popstate', () => history.pushState({ jmf: 1 }, '', location.href)); } catch (e) {}
+// 左上のロゴ：トップページに戻る。作業はその場で保存してから戻るので、あとで「📁 プロジェクト」から続きを開ける
+let _goingHome = false;
+async function goHome() {
+  if (document.body.classList.contains('home-mode')) return;
+  if (!confirm('トップページに戻りますか？\n\n今の作業は保存されます。続きは「その他のツール」の「📁 プロジェクト」から開けます。')) return;
+  try { autosave(); } catch (e) {}
+  try { if (TL && _tlRecordXml) await saveTimelineRecord({ xml: _tlRecordXml, name: _tlRecordName, cuts: manualCuts, gaps: tlGaps, angles: tlAngles, baseDur: tlBaseDur, savedAt: Date.now() }); } catch (e) {}
+  try { await projSaveNow(); } catch (e) {}
+  try { if (PKG_MODE && PKG_MODE.ready && TL) await fetch(`${HELPER_URL}/package-save-edit`, { method: 'POST', body: JSON.stringify(pkgEditState()) }); } catch (e) {}
+  try { sessionStorage.setItem('jmf_go_home', '1'); } catch (e) {}
+  _goingHome = true;
+  location.reload();
+}
 window.addEventListener('beforeunload', ev => {
+  if (_goingHome) return;
   if ((entries.length && JSON.stringify(entries) !== _cleanState) || (TL && manualCuts.length)) {
     ev.preventDefault();
     ev.returnValue = '';
