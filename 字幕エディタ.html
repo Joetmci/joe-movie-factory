@@ -5358,7 +5358,9 @@ async function projAfterOpen(name, opts) {
   try {
     const r = await fetch(`${HELPER_URL}/project-load?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
     if (!r.ok) return;
-    const ed = (await r.json()).edit || {};
+    let ed = (await r.json()).edit || {};
+    // 「先に切ってあった所」を戻して開いたのに、保存が戻す前の短いタイムラインの時間のとき：時間をずらして、水色の範囲と合わせる
+    if (TL && TL._restored && ed.coord !== 'restored') ed = _restoreRemapEdit(ed, TL._restored.ranges);
     const n = (ed.entries || []).length, c = (ed.cuts || []).length, g = (ed.gaps || []).length, a = (ed.angles || []).length;
     if (!n && !c && !g && !a && !(ed.blades || []).length) return;
     if (confirm(`「${name}」の保存された作業があります。\n（字幕 ${n}件・カット ${c}か所・ギャップ ${g}・アングル切替 ${a}）\n\n［OK］続きから開く\n［キャンセル］新しく始める（カットなどは、保存されたものを使わず、編集すると上書きされます。いま読み込んである字幕は、そのまま残ります）`)) {
