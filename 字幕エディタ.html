@@ -9403,13 +9403,16 @@ function renderCutList() {
   if (!box) return;
   const total = manualCuts.reduce((a, c) => a + (c.end - c.start), 0);
   const sil = manualCuts.filter(c => c.silence), silSec = sil.reduce((a, c) => a + (c.end - c.start), 0);
+  // 1件ずつ並べる（無音カットは水色の🔇、手でカットは✂）。行を押すと、タイムラインのその場所へ飛ぶ。時間は、タイムラインの目盛りと同じ「詰めた後の時間」
+  const M = TL ? _tlMerged() : [], at = t => TL ? _tlO2E(t, M) : t;
+  const order = manualCuts.map((c, i) => i).sort((a, b) => manualCuts[a].start - manualCuts[b].start);
   box.innerHTML = (sil.length
       ? `<div class="cp-item"><span>🔇 無音 ${sil.length}箇所（合計 約${Math.round(silSec)}秒）</span>` +
-        `<button class="btn btn-ghost btn-xs" style="padding:2px 6px;color:var(--danger);" onclick="cutRemoveSilence()" title="無音のカットを、すべて取り消す">✕</button></div>` : '') +
-    manualCuts.map((c, i) => c.silence ? '' :
-    `<div class="cp-item"><span>${_cutFmt(c.start)} 〜 ${_cutFmt(c.end)}（${(c.end - c.start).toFixed(1)}秒）</span>` +
-    `<button class="btn btn-ghost btn-xs" style="padding:2px 6px;" onclick="cutJump(${i})" title="この位置を見る">▶</button>` +
-    `<button class="btn btn-ghost btn-xs" style="padding:2px 6px;color:var(--danger);" onclick="cutRemove(${i})" title="この範囲を取り消す">✕</button></div>`).join('') +
+        `<button class="btn btn-ghost btn-xs" style="padding:2px 6px;color:var(--danger);" onclick="cutRemoveSilence()" title="まだ確定していない無音のカットを、すべて取り消す">✕ 全部戻す</button></div>` : '') +
+    order.map(i => { const c = manualCuts[i], silK = _cutKind(c) === 'silence';
+      return `<div class="cp-item cp-jump${silK ? ' cp-sil' : ''}" onclick="cutJump(${i})" title="押すと、この場所へ飛びます"><span>${silK ? '🔇 無音' : '✂ 手で'}　${_cutFmt(at(c.start))} の所（${(c.end - c.start).toFixed(1)}秒）</span>` +
+        `<button class="btn btn-ghost btn-xs" style="padding:2px 6px;" onclick="event.stopPropagation();cutJump(${i})" title="この場所へ飛ぶ">▶</button>` +
+        `<button class="btn btn-ghost btn-xs" style="padding:2px 6px;color:var(--danger);" onclick="event.stopPropagation();cutRemove(${i})" title="このカットを取り消す（映像を戻す）">✕</button></div>`; }).join('') +
     (manualCuts.length ? `<div class="cp-hint">カット範囲 ${manualCuts.length}件（合計 約${Math.round(total)}秒）<br><b style="color:var(--text);">👉 これで良ければ、右上の「🎬 XMLを出力」を押すと、カットが確定します</b></div>` : '');
   if (typeof tlbarDraw === 'function') { tlbarDraw(); tlSyncTimeDisplay(); }
   scheduleTimelineRecordSave();
